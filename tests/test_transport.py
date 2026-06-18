@@ -1,0 +1,69 @@
+from __future__ import annotations
+
+import unittest
+
+from sea_agent_sdk import Transport, normalize_agent_gateway_endpoint
+
+
+class TransportTests(unittest.TestCase):
+    def test_normalize_agent_gateway_endpoint(self) -> None:
+        cases = [
+            ("http://127.0.0.1:8080", "http://127.0.0.1:8080/agent-v2"),
+            ("http://127.0.0.1:8080/", "http://127.0.0.1:8080/agent-v2"),
+            ("http://127.0.0.1:8080/agent-v2", "http://127.0.0.1:8080/agent-v2"),
+            ("http://127.0.0.1:8080/agent-v2/", "http://127.0.0.1:8080/agent-v2/"),
+            ("https://example.com/api", "https://example.com/api/agent-v2"),
+            ("https://example.com?debug=1", "https://example.com/agent-v2?debug=1"),
+            ("", ""),
+        ]
+        for endpoint, expected in cases:
+            with self.subTest(endpoint=endpoint):
+                self.assertEqual(normalize_agent_gateway_endpoint(endpoint), expected)
+
+    def test_build_url_adds_agent_v2_fallback(self) -> None:
+        transport = Transport("http://127.0.0.1:8080")
+        self.assertEqual(
+            transport.build_url("/v1/tools", {"limit": 20}),
+            "http://127.0.0.1:8080/agent-v2/v1/tools?limit=20",
+        )
+
+        transport = Transport("http://127.0.0.1:8080/agent-v2")
+        self.assertEqual(
+            transport.build_url("/v1/tools"),
+            "http://127.0.0.1:8080/agent-v2/v1/tools",
+        )
+
+    def test_query_zero_values_match_go_sdk(self) -> None:
+        transport = Transport("http://127.0.0.1:8080")
+        self.assertEqual(
+            transport.build_url(
+                "/v1/tools",
+                {
+                    "search": "",
+                    "limit": 0,
+                    "include_deleted": False,
+                    "public": None,
+                    "status": "active",
+                },
+            ),
+            "http://127.0.0.1:8080/agent-v2/v1/tools?include_deleted=false&status=active",
+        )
+
+    def test_headers_include_authorization_unless_overridden(self) -> None:
+        transport = Transport(
+            "http://127.0.0.1:8080",
+            api_key="secret",
+            headers={"X-User-ID": "user_1"},
+        )
+        headers = transport.build_headers("application/json", True, {"X-Trace-ID": "trace_1"})
+        self.assertEqual(headers["Authorization"], "Bearer secret")
+        self.assertEqual(headers["X-User-ID"], "user_1")
+        self.assertEqual(headers["X-Trace-ID"], "trace_1")
+
+        headers = transport.build_headers("*/*", False, {"authorization": "Bearer other"})
+        self.assertEqual(headers["authorization"], "Bearer other")
+        self.assertNotIn("Authorization", headers)
+
+
+if __name__ == "__main__":
+    unittest.main()
