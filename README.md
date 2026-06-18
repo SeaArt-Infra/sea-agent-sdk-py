@@ -46,7 +46,7 @@ pip install --upgrade 'sea-agent-sdk[yaml]'
 从 GitHub 安装最新代码：
 
 ```bash
-pip install --upgrade git+https://github.com/seaart-beifeng/sea-agent-sdk-py.git
+pip install --upgrade git+https://github.com/SeaArt-Infra/sea-agent-sdk-py.git
 ```
 
 要求：
