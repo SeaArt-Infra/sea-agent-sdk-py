@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Python SDK for SeaArt agent-gateway APIs"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
 authors = [
   { name = "SeaArt" }
 ]
@@ -23,8 +24,8 @@ yaml = ["PyYAML>=6.0"]
 ws = ["websocket-client>=1.8"]
 
 [project.urls]
-Homepage = "https://github.com/SeaVerseAI/sea-agent-sdk-py"
-Repository = "https://github.com/SeaVerseAI/sea-agent-sdk-py"
+Homepage = "https://github.com/seaart-beifeng/sea-agent-sdk-py"
+Repository = "https://github.com/seaart-beifeng/sea-agent-sdk-py"
 
 [tool.setuptools.packages.find]
 include = ["sea_agent_sdk*"]
