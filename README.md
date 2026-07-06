@@ -1,59 +1,61 @@
 # Sea Agent Python SDK
 
-SeaArt Agent 网关 Python SDK，用于通过 `agent-gateway` 调用 Agent 目录、工具、技能、Agent 注册、Hook 管理、Chat Completion、SSE 流式响应和 WebSocket 流式响应能力。
+> Beta: SDK APIs and `agent-gateway` behavior may still change with gateway versions.
 
-特点：
+Python SDK for the SeaArt `agent-gateway`. It wraps gateway APIs for catalog lookup, tool registration, skill registration, agent registration, hook management, chat completion, SSE streaming, WebSocket streaming, chat replay, and chat cancellation.
 
-- 纯标准库实现，默认无第三方运行时依赖
-- 自动补全 `agent-gateway` 的 `/agent-v2` API 前缀
-- 兼容 `~/.seaagent/config.yaml` CLI 配置
-- 支持 OpenAI 风格多轮消息和多模态 content parts
-- 支持 SSE 流式响应解析，WebSocket 作为可选依赖
-- 提供 Python `snake_case` API，同时保留少量 Go SDK 风格别名便于迁移
+Features:
 
-## 功能导航
+- Standard-library runtime by default, with no required third-party runtime dependencies
+- Automatic `/agent-v2` API prefix normalization for `agent-gateway`
+- Compatibility with the `~/.seaagent/config.yaml` CLI configuration
+- OpenAI-style multi-turn messages and multimodal content parts
+- SSE stream parsing by default, with WebSocket support as an optional dependency
+- Pythonic `snake_case` APIs, with a small set of Go SDK-style aliases for migration
 
-| 能力 | Client 字段 | 功能 |
-|------|-------------|------|
-| 系统检查 | `client.system` / `client.System` | 健康检查和 metrics |
-| Catalog | `client.catalog` / `client.Catalog` | 查询已解析的能力目录 |
-| Tools | `client.tools` / `client.Tools` | 注册、查询、更新、删除、解析工具 |
-| Skills | `client.skills` / `client.Skills` | 注册、查询、更新、删除技能 |
-| Agents | `client.agents` / `client.Agents` | 注册、查询、更新、删除 Agent，查询能力 |
-| Hooks | `client.hooks` / `client.Hooks` | 注册和管理 Worker 事件 Hook |
-| Chat | `client.chat` / `client.Chat` | 非流式对话、流式对话、事件回放、取消会话 |
+## Available Resources
 
-## 安装
+| Resource | Client field | What it does |
+| --- | --- | --- |
+| System | `client.system` / `client.System` | Health and metrics checks |
+| Catalog | `client.catalog` / `client.Catalog` | List resolved catalog entries |
+| Tools | `client.tools` / `client.Tools` | Register, list, update, delete, and resolve tools |
+| Skills | `client.skills` / `client.Skills` | Register, list, update, and delete skills |
+| Agents | `client.agents` / `client.Agents` | Register, list, update, delete, and inspect agents |
+| Hooks | `client.hooks` / `client.Hooks` | Register and manage worker event hook endpoints |
+| Chat | `client.chat` / `client.Chat` | Run chat, stream chat, replay events, and cancel chats |
 
-从 PyPI 安装：
+## Installation
+
+Install from PyPI:
 
 ```bash
 pip install --upgrade sea-agent-sdk
 ```
 
-如果需要 WebSocket 流式能力：
+Install WebSocket streaming support when needed:
 
 ```bash
 pip install --upgrade 'sea-agent-sdk[ws]'
 ```
 
-如果希望使用 PyYAML 读写更完整的 YAML 配置：
+Install PyYAML support when you need fuller YAML config handling:
 
 ```bash
 pip install --upgrade 'sea-agent-sdk[yaml]'
 ```
 
-从 GitHub 安装最新代码：
+Install the latest code from GitHub:
 
 ```bash
 pip install --upgrade git+https://github.com/SeaArt-Infra/sea-agent-sdk-py.git
 ```
 
-要求：
+Requires Python 3.10 or newer.
 
-- Python 3.10+
+## Configuration
 
-## 初始化
+Create a client with explicit options:
 
 ```python
 import os
@@ -69,9 +71,9 @@ client = sa.Client(
 )
 ```
 
-`endpoint` 可以是网关根地址，也可以是已经包含 `/agent-v2` 的地址。SDK 会在缺失时自动补全 `/agent-v2`。
+`endpoint` may be the gateway base URL or a URL that already includes `/agent-v2`. The SDK appends `/agent-v2` before sending requests when it is missing.
 
-也可以复用 seaagent CLI 配置：
+Or reuse the seaagent CLI config:
 
 ```python
 import sea_agent_sdk as sa
@@ -79,7 +81,7 @@ import sea_agent_sdk as sa
 client = sa.new_client_from_config()
 ```
 
-默认读取：
+By default, the SDK reads `~/.seaagent/config.yaml`:
 
 ```yaml
 endpoint: http://127.0.0.1:8080
@@ -87,9 +89,9 @@ apiKey: sa-xxxxxxxx
 userId: production-line-123
 ```
 
-`userId` 会映射为请求头 `X-User-ID`。当网关需要 provider、owner 或 operator 信息时，`tools`、`skills`、`agents` 写操作通常需要这个请求头。
+`userId` is mapped to the `X-User-ID` request header. `X-User-ID` is required for `tools`, `skills`, and `agents` write operations when the gateway needs provider, owner, or operator metadata.
 
-## 系统检查
+## System Checks
 
 ```python
 health = client.system.health()
@@ -97,9 +99,9 @@ metrics = client.system.metrics()
 print(health)
 ```
 
-## 资源查询
+## Listing Resources
 
-List API 跟随 CLI 和网关过滤参数。常用参数包括 `search`、`status`、`provider`、`public`、`limit`、`offset`，兼容参数包括 `source_kind`、`owner_id`、`category`。
+List APIs follow CLI and gateway filters. Common filters are `search`, `status`, `provider`, `public`, `limit`, and `offset`. Compatibility filters include `source_kind`, `owner_id`, and `category`.
 
 ```python
 tools = client.tools.list(
@@ -112,7 +114,7 @@ tools = client.tools.list(
 print(tools)
 ```
 
-也可以直接传 dict：
+You can also pass a plain dictionary:
 
 ```python
 tools = client.tools.list(
@@ -124,9 +126,11 @@ tools = client.tools.list(
 )
 ```
 
-## Chat API
+Pagination follows the gateway behavior: `limit` defaults to 20 when omitted or `<= 0`, the gateway caps values above 200, and `offset` starts at 0.
 
-### 单轮对话
+## Chat Requests
+
+Use `message` for the common single-user-message case:
 
 ```python
 result = client.chat.run(
@@ -138,7 +142,7 @@ result = client.chat.run(
 print(result)
 ```
 
-### 多轮对话
+Use `messages` for multi-turn conversations:
 
 ```python
 result = client.chat.run(
@@ -152,7 +156,7 @@ result = client.chat.run(
 )
 ```
 
-### 多模态消息
+Use OpenAI-style content parts for multimodal messages:
 
 ```python
 result = client.chat.run(
@@ -171,7 +175,7 @@ result = client.chat.run(
 )
 ```
 
-### 请求元数据和自定义请求头
+Attach request metadata and per-request headers when gateway or worker tracing needs them:
 
 ```python
 result = client.chat.run(
@@ -190,11 +194,11 @@ result = client.chat.run(
 )
 ```
 
-`request_id`、`category`、`metadata` 会进入请求体。`headers` 会在非流式、SSE 和 WebSocket Chat 请求中透传。
+`request_id`, `category`, and `metadata` are sent in the chat body. Custom headers are forwarded when the SDK creates non-streaming, SSE, or WebSocket chat requests. Use `extra_body` for gateway fields that are not yet exposed as first-class SDK options.
 
-## SSE 流式对话
+## SSE Streaming
 
-SSE 是默认流式协议，适合大多数 HTTP 网关和代理：
+SSE is the default stream transport and works well with most HTTP gateways and proxies:
 
 ```python
 text = client.chat.run_stream(
@@ -211,9 +215,9 @@ text = client.chat.run_stream(
 print("\n\nFinal text:", text)
 ```
 
-## WebSocket 流式对话
+## WebSocket Streaming
 
-WebSocket 是可选能力，需要安装 `ws` extra：
+WebSocket streaming is optional. Install the `ws` extra first:
 
 ```bash
 pip install --upgrade 'sea-agent-sdk[ws]'
@@ -232,9 +236,9 @@ text = client.chat.run_stream(
 )
 ```
 
-## 回放已有 Chat
+## Replay an Existing Chat
 
-如果 Chat 是由其他进程、浏览器页面或 CLI 命令创建的，可以按 `chat_id` 订阅事件。`after_seq` 用于从指定序号之后继续消费：
+If another process, browser page, or CLI command created the chat, subscribe by chat ID. `after_seq` resumes from events after the specified sequence number.
 
 ```python
 text = client.chat.stream(
@@ -246,11 +250,11 @@ text = client.chat.stream(
 )
 ```
 
-使用 `sa.STREAM_TRANSPORT_WS` 可以通过同一 API 切换到 WebSocket 回放。
+Use `sa.STREAM_TRANSPORT_WS` with the same API to replay over WebSocket.
 
 ## Inline Agent Config
 
-当请求不想引用已注册 Agent 时，可以传入 `agent_config`。`temperature`、`max_turns`、`timeout` 等运行时字段会由 `agent-gateway` 转发给 Worker：
+Pass `agent_config` when the request should not reference a registered agent. Runtime fields such as `temperature`, `max_turns`, and `timeout` are forwarded by `agent-gateway` to the worker.
 
 ```python
 result = client.chat.run(
@@ -272,7 +276,7 @@ result = client.chat.run(
 )
 ```
 
-需要网关为 Inline Agent 启动沙盒时，可以声明 sandbox template。目前支持 `react-game` 和 `react-web`：
+Declare a sandbox template when the gateway should start a sandbox for the inline agent. Supported template values are `react-game` and `react-web`.
 
 ```python
 result = client.chat.run(
@@ -295,11 +299,11 @@ result = client.chat.run(
 )
 ```
 
-## 注册 Tools、Skills 和 Agents
+## Register Tools, Skills, and Agents
 
-`agent-gateway` 使用服务端生成的 UUID `id` 作为资源身份。注册资源后的查找和关联应使用 UUID，不要再发送已经移除的 `tool_key`、`skill_key` 或 `agent_key`。
+`agent-gateway` uses server-generated UUID `id` values as resource identities. Registry lookup and association should use UUIDs; do not send removed `tool_key`, `skill_key`, or `agent_key` fields.
 
-### 注册 HTTP Tool
+### Register an HTTP Tool
 
 ```python
 tool = client.tools.register(
@@ -321,9 +325,9 @@ tool = client.tools.register(
 )
 ```
 
-`service_name` 是工具顶层字段，用于标识同一服务上的工具集合。不要把 `service_name` 放进 metadata/config，也不要在用户侧注册 payload 中发送 `inject_user_credentials`。
+`service_name` is a top-level tool field beside `name`. It identifies the backing service shared by tools on the same server. If omitted, the gateway derives it from the endpoint host prefix; builtin and no-endpoint tools default to `deepagent`. Do not put `service_name` in metadata/config, and do not send `inject_user_credentials` in user-facing registration payloads.
 
-### 注册 Skill
+### Register a Skill
 
 ```python
 skill = client.skills.register(
@@ -338,13 +342,13 @@ skill = client.skills.register(
 )
 ```
 
-当 `required_tools` 或 `optional_tools` 包含已注册 HTTP Tool UUID 字符串时，网关会规范化为：
+When `required_tools` or `optional_tools` contains registered HTTP Tool UUID strings, the gateway normalizes them to:
 
 ```python
 {"type": "http", "ref": "<tool-uuid>"}
 ```
 
-需要非默认工具类型时可以直接传对象：
+Use object entries when you need non-default tool types:
 
 ```python
 {
@@ -356,9 +360,9 @@ skill = client.skills.register(
 }
 ```
 
-`type` 必须是 `http`、`http_batch`、`builtin` 或 `mcp`。MCP 工具还需要 `server`。不要使用 Tool `name` 或旧 `tool_key` 作为 `ref`。
+`type` is required and must be `http`, `http_batch`, `builtin`, or `mcp`. MCP entries also require `server`. Do not use Tool `name` or old `tool_key` values as `ref`.
 
-### 注册 Agent
+### Register an Agent
 
 ```python
 agent = client.agents.register(
@@ -373,9 +377,29 @@ agent = client.agents.register(
 )
 ```
 
+## Skill Runtime Rules
+
+| Field | Rule |
+| --- | --- |
+| `name` | Must match `^[a-z0-9-]+$`; use lowercase letters, numbers, and hyphens only |
+| `description` | Required; keep it short because the gateway writes it to inline `SKILL.md` frontmatter |
+| `instruction` | Required; full Markdown body for the skill |
+| `required_tools` / `optional_tools` | Use UUID refs for registered HTTP, HTTP Batch, and registered builtin tools |
+
+When an agent runs with a registered skill, the gateway assembles an inline skill document:
+
+```md
+---
+name: web-research
+description: Research a topic with web tools.
+---
+
+Search, compare sources, and summarize findings.
+```
+
 ## Hook Endpoints
 
-注册 Worker 事件 Hook：
+Register a hook endpoint for worker events:
 
 ```python
 hook = client.hooks.register(
@@ -388,32 +412,52 @@ hook = client.hooks.register(
 )
 ```
 
-Hook 使用 `ClientOptions.api_key` 生成 `Authorization: Bearer ...` 请求头，不要在 payload 中发送 `api_key`。
+Hooks use `ClientOptions.api_key` as `Authorization: Bearer ...`; do not send `api_key` in the payload. Worker calls use `POST`, and the receiver should filter by `event_id` in the event payload when needed.
 
 ## API Reference
 
-| 模块 | 方法 |
-|------|------|
-| System | `health()`、`metrics()` |
+| Area | Methods |
+| --- | --- |
+| System | `health()`, `metrics()` |
 | Catalog | `list(options)` |
-| Tools | `register(payload)`、`list(options)`、`get(tool_id)`、`update(tool_id, payload)`、`delete(tool_id)`、`resolve(tool_id)` |
-| Skills | `register(payload)`、`list(options)`、`get(skill_id)`、`update(skill_id, payload)`、`delete(skill_id)` |
-| Agents | `register(payload)`、`list(options)`、`get(agent_id)`、`update(agent_id, payload)`、`delete(agent_id)`、`capabilities(agent_id)` |
-| Hooks | `register(payload)`、`list(options)`、`get(hook_id)`、`update(hook_id, payload)`、`delete(hook_id)` |
-| Chat | `create_completion(payload)`、`stream_completion(payload, handlers)`、`run(options)`、`run_stream(options, handlers)`、`get(chat_id)`、`events(chat_id, options)`、`stream(chat_id, handlers, options)`、`cancel(chat_id)` |
+| Tools | `register(payload)`, `list(options)`, `get(tool_id)`, `update(tool_id, payload)`, `delete(tool_id)`, `resolve(tool_id)` |
+| Skills | `register(payload)`, `list(options)`, `get(skill_id)`, `update(skill_id, payload)`, `delete(skill_id)` |
+| Agents | `register(payload)`, `list(options)`, `get(agent_id)`, `update(agent_id, payload)`, `delete(agent_id)`, `capabilities(agent_id)` |
+| Hooks | `register(payload)`, `list(options)`, `get(hook_id)`, `update(hook_id, payload)`, `delete(hook_id)` |
+| Chat | `create_completion(payload)`, `stream_completion(payload, handlers)`, `run(options)`, `run_stream(options, handlers)`, `get(chat_id)`, `events(chat_id, options)`, `stream(chat_id, handlers, options)`, `cancel(chat_id)` |
 
-## 调试
+## Stream Utilities
 
-设置 `SEAAGENT_DEBUG=1` 可以打印 HTTP 和 WebSocket 请求：
+If you need to process raw stream data yourself, the package also exports these helpers:
+
+```python
+from sea_agent_sdk import (
+    ChatStreamProcessor,
+    parse_sse,
+    parse_websocket_event,
+    text_from_stream_event,
+)
+```
+
+## Debugging
+
+Set `SEAAGENT_DEBUG=1` to print outgoing HTTP and WebSocket requests:
 
 ```bash
 export SEAAGENT_DEBUG=1
 ```
 
-## 本地开发
+## Local Development
 
 ```bash
 make test
 make build
 make check
 ```
+
+## Next Steps
+
+- Start with `client.chat.run()` for non-streaming requests.
+- Use `client.chat.run_stream()` with SSE for most streaming integrations.
+- Use `client.chat.stream()` with `after_seq` to resume an existing chat.
+- Register tools, skills, and agents with UUID-based references only.
