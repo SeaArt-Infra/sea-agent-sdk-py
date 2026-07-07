@@ -8,7 +8,7 @@ Features:
 
 - Standard-library runtime by default, with no required third-party runtime dependencies
 - Automatic `/agent-v2` API prefix normalization for `agent-gateway`
-- Compatibility with the `~/.seaagent/config.yaml` CLI configuration
+- Explicit client configuration with endpoint, API key, and request headers
 - OpenAI-style multi-turn messages and multimodal content parts
 - SSE stream parsing by default, with WebSocket support as an optional dependency
 - Pythonic `snake_case` APIs, with a small set of Go SDK-style aliases for migration
@@ -73,23 +73,7 @@ client = sa.Client(
 
 `endpoint` may be the gateway base URL or a URL that already includes `/agent-v2`. The SDK appends `/agent-v2` before sending requests when it is missing.
 
-Or reuse the seaagent CLI config:
-
-```python
-import sea_agent_sdk as sa
-
-client = sa.new_client_from_config()
-```
-
-By default, the SDK reads `~/.seaagent/config.yaml`:
-
-```yaml
-endpoint: http://127.0.0.1:8080
-apiKey: sa-xxxxxxxx
-userId: production-line-123
-```
-
-`userId` is mapped to the `X-User-ID` request header. `X-User-ID` is required for `tools`, `skills`, and `agents` write operations when the gateway needs provider, owner, or operator metadata.
+Pass `X-User-ID` in `ClientOptions.headers` when `tools`, `skills`, or `agents` write operations need provider, owner, or operator metadata.
 
 ## System Checks
 
@@ -101,7 +85,7 @@ print(health)
 
 ## Listing Resources
 
-List APIs follow CLI and gateway filters. Common filters are `search`, `status`, `provider`, `public`, `limit`, and `offset`. Compatibility filters include `source_kind`, `owner_id`, and `category`.
+List APIs pass gateway filters through SDK option objects. Common filters are `search`, `status`, `provider`, `public`, `limit`, and `offset`. Compatibility filters include `source_kind`, `owner_id`, and `category`.
 
 ```python
 tools = client.tools.list(
@@ -288,7 +272,7 @@ The SDK accumulates returned text from `response.text.delta`. It also keeps comp
 
 ## Replay an Existing Chat
 
-If another process, browser page, or CLI command created the chat, subscribe by chat ID. `after_seq` resumes from events after the specified sequence number.
+If another SDK client or application created the chat, subscribe by chat ID. `after_seq` resumes from events after the specified sequence number.
 
 ```python
 text = client.chat.stream(
@@ -487,14 +471,6 @@ from sea_agent_sdk import (
     parse_websocket_event,
     text_from_stream_event,
 )
-```
-
-## Debugging
-
-Set `SEAAGENT_DEBUG=1` to print outgoing HTTP and WebSocket requests:
-
-```bash
-export SEAAGENT_DEBUG=1
 ```
 
 ## Local Development
