@@ -159,6 +159,7 @@ class ChatCompletionRequest:
     agent_id: str = ""
     category: str = ""
     agent_config: dict[str, Any] | None = None
+    skill_ids: list[str] | None = None
     metadata: dict[str, Any] | None = None
     stream: bool = False
     headers: dict[str, str] | None = None
@@ -171,6 +172,7 @@ class ChatRunOptions:
     agent_id: str = ""
     category: str = ""
     agent_config: dict[str, Any] | None = None
+    skill_ids: list[str] | None = None
     message: str = ""
     messages: list[ChatMessage | Mapping[str, Any]] | None = None
     metadata: dict[str, Any] | None = None

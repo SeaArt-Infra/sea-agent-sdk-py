@@ -340,6 +340,7 @@ def build_run_payload(options: ChatRunOptions | dict[str, Any], stream: bool) ->
         agent_id=option_value(options, "agent_id", ""),
         category=option_value(options, "category", ""),
         agent_config=option_value(options, "agent_config"),
+        skill_ids=option_value(options, "skill_ids"),
         messages=messages,
         metadata=option_value(options, "metadata"),
         stream=stream,
@@ -363,6 +364,10 @@ def chat_completion_body(payload: ChatCompletionRequest | dict[str, Any]) -> dic
     agent_config = option_value(payload, "agent_config")
     if agent_config is not None:
         body["agent_config"] = to_jsonable(agent_config)
+
+    skill_ids = option_value(payload, "skill_ids")
+    if skill_ids:
+        body["skill_ids"] = to_jsonable(skill_ids)
 
     metadata = option_value(payload, "metadata")
     if metadata is not None:

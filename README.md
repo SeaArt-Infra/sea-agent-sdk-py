@@ -126,6 +126,18 @@ result = client.chat.run(
 print(result)
 ```
 
+Use `skill_ids` to temporarily mount extra Skills for a registered Agent run when it needs one-off capabilities without changing its saved configuration. Agent Gateway accepts at most 20 active, visible Skill UUIDs, merges them after the Agent's own Skills, dedupes repeated IDs, rejects `skill_ids` when `agent_config` is used, and only lets Skill runtime config fill Agent defaults that are unset.
+
+```python
+result = client.chat.run(
+    sa.ChatRunOptions(
+        agent_id="33333333-3333-4333-8333-333333333333",
+        skill_ids=["11111111-1111-1111-1111-111111111111"],
+        message="Use the extra skill for this run.",
+    )
+)
+```
+
 Use `messages` for multi-turn conversations:
 
 ```python
