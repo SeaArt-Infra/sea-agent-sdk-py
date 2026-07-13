@@ -6,8 +6,8 @@ from typing import Any, Callable, Literal
 
 QueryParams = dict[str, Any]
 StreamTransport = Literal["sse", "ws"]
-STREAM_TRANSPORT_SSE = "sse"
-STREAM_TRANSPORT_WS = "ws"
+STREAM_TRANSPORT_SSE: StreamTransport = "sse"
+STREAM_TRANSPORT_WS: StreamTransport = "ws"
 
 
 @dataclass(slots=True)
@@ -184,6 +184,17 @@ class ChatRunOptions:
 class ChatStreamEvent:
     event: str
     data: Any
+    id: str = ""
+    seq: int = 0
+
+
+@dataclass(slots=True)
+class ChatReconnectInfo:
+    attempt: int
+    run_id: str
+    after_seq: int
+    delay: float
+    error: Exception | None = None
 
 
 @dataclass(slots=True)
@@ -191,6 +202,11 @@ class ChatStreamHandlers:
     transport: StreamTransport = STREAM_TRANSPORT_SSE
     on_event: Callable[[ChatStreamEvent], None] | None = None
     on_text_delta: Callable[[str, ChatStreamEvent], None] | None = None
+    auto_resume: bool = True
+    max_reconnects: int = 3
+    reconnect_delay: float = 0.25
+    max_reconnect_delay: float = 5.0
+    on_reconnect: Callable[[ChatReconnectInfo], None] | None = None
 
 
 def to_jsonable(value: Any) -> Any:

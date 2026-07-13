@@ -18,3 +18,11 @@ class WebSocketDependencyError(SeaAgentError):
             "WebSocket streaming requires the optional dependency: "
             "pip install 'sea-agent-sdk[ws]'"
         )
+
+
+class StreamProcessingError(SeaAgentError):
+    """Raised when a stream frame or user callback cannot be processed."""
+
+
+class StreamClosedError(SeaAgentError):
+    """Raised when a non-terminal stream closes and cannot be resumed."""

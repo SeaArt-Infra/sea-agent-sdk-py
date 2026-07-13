@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from .client import Client, NewClient, NewClientFromConfig, new_client, new_client_from_config
 from .config import DefaultConfigPath, LoadConfig, SaveConfig, default_config_path, load_config, save_config
-from .errors import APIError, SeaAgentError, WebSocketDependencyError
+from .errors import (
+    APIError,
+    SeaAgentError,
+    StreamClosedError,
+    StreamProcessingError,
+    WebSocketDependencyError,
+)
 from .resources import BuildRunPayload, ChatCompletionBody, build_run_payload, chat_completion_body
 from .stream import (
     ChatStreamProcessor,
@@ -25,6 +31,7 @@ from .types import (
     ChatContentURL,
     ChatEventsOptions,
     ChatMessage,
+    ChatReconnectInfo,
     ChatRunOptions,
     ChatStreamEvent,
     ChatStreamHandlers,
@@ -55,6 +62,7 @@ __all__ = [
     "ChatContentURL",
     "ChatEventsOptions",
     "ChatMessage",
+    "ChatReconnectInfo",
     "ChatRunOptions",
     "ChatStreamEvent",
     "ChatStreamHandlers",
@@ -79,6 +87,8 @@ __all__ = [
     "SeaAgentError",
     "SkillListOptions",
     "StreamTransport",
+    "StreamClosedError",
+    "StreamProcessingError",
     "TextChatContent",
     "TextFromStreamEvent",
     "ToolListOptions",

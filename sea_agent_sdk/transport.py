@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import codecs
 import json
 import os
 import socket
@@ -37,8 +38,9 @@ class Transport:
         path: str,
         query: QueryParams | None,
         on_chunk: Callable[[str], None],
+        headers: Mapping[str, str] | None = None,
     ) -> None:
-        self._request_stream("GET", path, query, None, None, on_chunk)
+        self._request_stream("GET", path, query, None, headers, on_chunk)
 
     def post_json(self, path: str, body: Any, headers: Mapping[str, str] | None = None) -> Any:
         return self._request_json("POST", path, None, body, headers)
@@ -81,7 +83,17 @@ class Transport:
         if _is_debug_enabled():
             print("WS", url, file=sys.stderr)
 
-        conn = websocket.create_connection(url, header=header_lines, timeout=self.timeout)
+        try:
+            conn = websocket.create_connection(url, header=header_lines, timeout=self.timeout)
+        except websocket.WebSocketBadStatusException as exc:
+            status_code = int(exc.status_code)
+            response_body = exc.resp_body
+            if isinstance(response_body, bytes):
+                response_body = response_body.decode("utf-8", errors="replace")
+            elif response_body is not None and not isinstance(response_body, str):
+                response_body = str(response_body)
+            message = _error_message_from_response(response_body or str(exc))
+            raise APIError(status_code, message) from exc
         try:
             if initial_message is not None:
                 conn.send(json.dumps(to_jsonable(initial_message), ensure_ascii=False))
@@ -211,12 +223,21 @@ class Transport:
         except (error.URLError, TimeoutError, socket.timeout, OSError) as exc:
             raise SeaAgentError(f"request failed: {exc}") from exc
 
+        decoder = codecs.getincrementaldecoder("utf-8")()
         with response:
             while True:
-                raw = response.read(4096)
+                try:
+                    raw = response.read(4096)
+                except (error.URLError, TimeoutError, socket.timeout, OSError) as exc:
+                    raise SeaAgentError(f"stream failed: {exc}") from exc
                 if not raw:
+                    tail = decoder.decode(b"", final=True)
+                    if tail:
+                        on_chunk(tail)
                     return
-                on_chunk(raw.decode("utf-8"))
+                chunk = decoder.decode(raw)
+                if chunk:
+                    on_chunk(chunk)
 
     def _build_request(
         self,

@@ -11,6 +11,7 @@ Features:
 - Explicit client configuration with endpoint, API key, and request headers
 - OpenAI-style multi-turn messages and multimodal content parts
 - SSE stream parsing by default, with WebSocket support as an optional dependency
+- Automatic stream resume with event-sequence deduplication and configurable backoff
 - Pythonic `snake_case` APIs, with a small set of Go SDK-style aliases for migration
 
 ## Available Resources
@@ -211,6 +212,48 @@ text = client.chat.run_stream(
 print("\n\nFinal text:", text)
 ```
 
+`run_stream()`, `stream_completion()`, and `stream()` automatically resume transiently
+disconnected streams. For a newly created run, the SDK keeps a stable `request_id`, captures the
+`run_id` from `chat.created`, and reconnects with the last delivered event sequence. Events already
+delivered before the disconnect are not emitted again.
+
+Auto-resume makes up to three reconnect attempts by default. Configure or disable it through the
+stream handlers:
+
+```python
+handlers = sa.ChatStreamHandlers(
+    max_reconnects=5,
+    reconnect_delay=0.25,
+    max_reconnect_delay=5.0,
+    on_reconnect=lambda info: print(
+        f"resuming {info.run_id} after seq {info.after_seq} (attempt {info.attempt})"
+    ),
+)
+
+# Use auto_resume=False when the caller owns reconnection.
+```
+
+| Handler field | Default | Behavior |
+| --- | --- | --- |
+| `auto_resume` | `True` | Resume a stream that closes before a terminal event |
+| `max_reconnects` | `3` | Reconnect attempts after the initial connection; `0` disables retries |
+| `reconnect_delay` | `0.25` | Initial reconnect delay in seconds |
+| `max_reconnect_delay` | `5.0` | Maximum exponential-backoff delay in seconds |
+| `on_reconnect` | `None` | Receives `ChatReconnectInfo(attempt, run_id, after_seq, delay, error)` |
+
+EOF, network failures, HTTP `408`/`429`, and `5xx` responses are retried. Other `4xx`
+responses (including WebSocket handshake failures), WebSocket `error` messages, missing
+WebSocket dependencies, invalid UTF-8, and exceptions raised by `on_event`, `on_text_delta`, or
+`on_reconnect` are raised immediately. The complete terminal set is `response.completed`,
+`response.failed`, `response.canceled`, `response.cancelled`, `chat.response`, `chat.completed`,
+`chat.failed`, and `chat.cancelled`. The SDK closes the transport as soon as a terminal event is
+delivered, ignores later events in the same chunk, and does not surface a connection error
+reported while closing. Incomplete SSE frames at EOF are discarded and replayed from the last
+complete `seq` when reconnection is enabled.
+
+Automatic resume covers connection loss while the current process is running. Persist
+`run_id` and `event.seq` in the application when a stream must survive a process restart.
+
 ## WebSocket Streaming
 
 WebSocket streaming is optional. Install the `ws` extra first:
@@ -234,19 +277,21 @@ text = client.chat.run_stream(
 
 ## Worker Stream Event Format
 
-`agent-gateway` forwards worker stream events as SSE blocks or WebSocket messages. The SDK normalizes both transports into `ChatStreamEvent(event, data)`. Use `on_text_delta` for assistant text and `on_event` for all raw lifecycle, tool, skill, and terminal events.
+`agent-gateway` forwards worker stream events as SSE blocks or WebSocket messages. The SDK normalizes both transports into `ChatStreamEvent(event, data, id, seq)`. `id` preserves the wire event ID and `seq` is its numeric form, or `0` when an event such as a heartbeat has no sequence. Use `on_text_delta` for assistant text and `on_event` for all raw lifecycle, tool, skill, and terminal events.
 
 SSE frames use the standard event/data envelope:
 
 ```text
 event: response.text.delta
 data: {"type":"response.text.delta","response_id":"run_xxx","item_id":"item_run_xxx_msg","output_index":0,"content_index":0,"delta":"hello"}
+id: 42
 ```
 
 WebSocket frames carry the same payload under `data`:
 
 ```json
 {
+  "id": "42",
   "event": "response.text.delta",
   "data": {
     "type": "response.text.delta",
@@ -267,6 +312,7 @@ Common worker event sequence:
 | `response.in_progress` | Run enters processing | `type`, `response.id`, `response.status` |
 | `response.output_item.added` | Assistant message item or tool call item starts | `response_id`, `output_index`, `item.type`, `item.id`, `item.status`; tool calls also include `item.call_id`, `item.name` |
 | `response.content_part.added` | Assistant text content part starts | `response_id`, `item_id`, `output_index`, `content_index`, `part.type` |
+| `chat.delta` | Legacy assistant text chunk | `content`, `text`, or `delta` |
 | `response.text.delta` | Assistant text token/chunk | `response_id`, `item_id`, `output_index`, `content_index`, `delta` |
 | `response.function_call_arguments.done` | Tool call arguments are finalized | `response_id`, `item_id`, `call_id`, `name`, `arguments` as a JSON string |
 | `fabric.tool.started` | Worker starts a tool call | `tool.id`, `tool.call_id`, `tool.name`, `tool.status`, `tool.arguments` |
@@ -278,13 +324,13 @@ Common worker event sequence:
 | `response.output_item.done` | Assistant message or function call output item completes | `item.type`, `item.status`, `item.content` for messages; `item.call_id`, `item.arguments`, `item.output` for tool calls |
 | `response.completed` | Run completed successfully | `response.id`, `response.status`, `response.usage`, `response.elapsed_ms`, `response.metadata`, `response.output` |
 | `response.failed` | Run failed | `response.status`, `response.error.type`, `response.error.code`, `response.error.message` |
-| `response.cancelled` | Run was cancelled | `response.status`, `response.cancel_reason` |
+| `response.canceled` / `response.cancelled` | Run was canceled | `response.status`, `response.cancel_reason` |
 
-The SDK accumulates returned text from `response.text.delta`. It also keeps compatibility with legacy `response.output_text.delta`, `chat.response`, and `message.delta` text events. Tool, skill, usage, metadata, and terminal details are not passed to `on_text_delta`; inspect them in `on_event`.
+The SDK accumulates returned text from `response.text.delta`. It also keeps compatibility with legacy `response.output_text.delta`, `chat.delta`, `chat.response`, and `message.delta` text events. Tool, skill, usage, metadata, and terminal details are not passed to `on_text_delta`; inspect them in `on_event`.
 
 ## Replay an Existing Chat
 
-If another SDK client or application created the chat, subscribe by chat ID. `after_seq` resumes from events after the specified sequence number.
+If another SDK client or application created the chat, subscribe by chat ID. `after_seq` selects the initial cursor; subsequent transient disconnects are resumed automatically from the latest delivered `event.seq`.
 
 ```python
 text = client.chat.stream(
@@ -497,5 +543,5 @@ make check
 
 - Start with `client.chat.run()` for non-streaming requests.
 - Use `client.chat.run_stream()` with SSE for most streaming integrations.
-- Use `client.chat.stream()` with `after_seq` to resume an existing chat.
+- Use `client.chat.stream()` with `after_seq` to subscribe to an existing chat or resume after a process restart; active-process disconnects are handled automatically.
 - Register tools, skills, and agents with UUID-based references only.

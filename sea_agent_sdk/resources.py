@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import time
+import uuid
+from collections.abc import Callable
 from typing import Any
 from urllib.parse import quote
 
+from .errors import APIError, StreamClosedError, StreamProcessingError, WebSocketDependencyError
 from .stream import ChatStreamProcessor
 from .transport import Transport
 from .types import (
@@ -13,6 +17,7 @@ from .types import (
     ChatEventsOptions,
     ChatMessage,
     ChatRunOptions,
+    ChatReconnectInfo,
     ChatStreamHandlers,
     HookListOptions,
     SkillListOptions,
@@ -246,23 +251,16 @@ class ChatResource:
         processor = ChatStreamProcessor(handlers)
         body = chat_completion_body(payload)
         body["stream"] = True
-
-        if processor.handlers.transport == STREAM_TRANSPORT_WS:
-            self.transport.websocket(
-                "/v1/chat/completions/ws",
-                None,
-                body,
-                processor.write_websocket_message,
-                _payload_headers(payload),
-            )
+        request_id = body.get("request_id")
+        if not isinstance(request_id, str) or not request_id.strip():
+            body["request_id"] = f"sdk_{uuid.uuid4()}"
         else:
-            self.transport.post_stream(
-                "/v1/chat/completions",
-                body,
-                processor.write_sse_chunk,
-                _payload_headers(payload),
-            )
-        return processor.end()
+            body["request_id"] = request_id.strip()
+        return self._consume_stream(
+            processor,
+            initial_body=body,
+            headers=_payload_headers(payload),
+        )
 
     def run(self, options: ChatRunOptions | dict[str, Any]) -> Any:
         return self.create_completion(build_run_payload(options, stream=False))
@@ -300,22 +298,117 @@ class ChatResource:
         options: ChatEventsOptions | dict[str, Any] | None = None,
     ) -> str:
         processor = ChatStreamProcessor(handlers)
-        query = {"after_seq": option_value(options, "after_seq", 0)}
+        processor.resume_from(chat_id, int(option_value(options, "after_seq", 0) or 0))
+        return self._consume_stream(processor)
 
+    def _consume_stream(
+        self,
+        processor: ChatStreamProcessor,
+        *,
+        initial_body: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> str:
+        reconnects = 0
+        while True:
+            stream_error: Exception | None = None
+            try:
+                if initial_body is not None and not processor.run_id:
+                    self._open_completion_stream(processor, initial_body, headers)
+                else:
+                    self._open_replay_stream(processor, headers)
+            except _StreamTerminalSignal:
+                pass
+            except Exception as exc:
+                stream_error = exc
+
+            processor.discard_incomplete()
+
+            if processor.terminal:
+                return processor.end()
+
+            if not processor.handlers.auto_resume:
+                if stream_error is not None:
+                    raise stream_error
+                return processor.end()
+
+            if stream_error is None:
+                stream_error = StreamClosedError("stream closed before a terminal event")
+            if stream_error is not None and not _is_retryable_stream_error(stream_error):
+                raise stream_error
+
+            max_reconnects = processor.handlers.max_reconnects
+            if max_reconnects >= 0 and reconnects >= max_reconnects:
+                raise stream_error
+
+            reconnects += 1
+            delay = _reconnect_delay(processor.handlers, reconnects)
+            if processor.handlers.on_reconnect is not None:
+                processor.handlers.on_reconnect(
+                    ChatReconnectInfo(
+                        attempt=reconnects,
+                        run_id=processor.run_id,
+                        after_seq=processor.last_seq,
+                        delay=delay,
+                        error=stream_error,
+                    )
+                )
+            if delay > 0:
+                time.sleep(delay)
+
+    def _open_completion_stream(
+        self,
+        processor: ChatStreamProcessor,
+        body: dict[str, Any],
+        headers: dict[str, str] | None,
+    ) -> None:
+        write_sse_chunk = _stop_after_terminal(processor, processor.write_sse_chunk)
+        write_websocket_message = _stop_after_terminal(
+            processor, processor.write_websocket_message
+        )
         if processor.handlers.transport == STREAM_TRANSPORT_WS:
             self.transport.websocket(
-                f"/v1/chats/{_url_escape(chat_id)}/ws",
+                "/v1/chat/completions/ws",
+                None,
+                body,
+                write_websocket_message,
+                headers,
+            )
+            return
+        self.transport.post_stream(
+            "/v1/chat/completions",
+            body,
+            write_sse_chunk,
+            headers,
+        )
+
+    def _open_replay_stream(
+        self,
+        processor: ChatStreamProcessor,
+        headers: dict[str, str] | None,
+    ) -> None:
+        if not processor.run_id:
+            raise StreamClosedError("stream closed before run_id was received")
+        query = {"after_seq": processor.last_seq}
+        run_id = _url_escape(processor.run_id)
+        write_sse_chunk = _stop_after_terminal(processor, processor.write_sse_chunk)
+        write_websocket_message = _stop_after_terminal(
+            processor, processor.write_websocket_message
+        )
+        if processor.handlers.transport == STREAM_TRANSPORT_WS:
+            self.transport.websocket(
+                f"/v1/chats/{run_id}/ws",
                 query,
                 None,
-                processor.write_websocket_message,
+                write_websocket_message,
+                headers,
             )
-        else:
-            self.transport.get_stream(
-                f"/v1/chats/{_url_escape(chat_id)}/stream",
-                query,
-                processor.write_sse_chunk,
-            )
-        return processor.end()
+            return
+        self.transport.get_stream(
+            f"/v1/chats/{run_id}/stream",
+            query,
+            write_sse_chunk,
+            headers,
+        )
 
     def cancel(self, chat_id: str) -> Any:
         return self.transport.post_json(f"/v1/chats/{_url_escape(chat_id)}/cancel", None)
@@ -382,6 +475,39 @@ def chat_completion_body(payload: ChatCompletionRequest | dict[str, Any]) -> dic
 
 def _payload_headers(payload: ChatCompletionRequest | dict[str, Any]) -> dict[str, str] | None:
     return option_value(payload, "headers")
+
+
+class _StreamTerminalSignal(Exception):
+    pass
+
+
+def _stop_after_terminal(
+    processor: ChatStreamProcessor,
+    write: Callable[[str], None],
+) -> Callable[[str], None]:
+    def wrapped(value: str) -> None:
+        write(value)
+        if processor.terminal:
+            raise _StreamTerminalSignal
+
+    return wrapped
+
+
+def _is_retryable_stream_error(exc: Exception) -> bool:
+    if isinstance(exc, APIError):
+        return exc.status_code in {408, 429} or exc.status_code >= 500
+    if isinstance(exc, (StreamProcessingError, WebSocketDependencyError)):
+        return False
+    return not isinstance(exc, (TypeError, ValueError))
+
+
+def _reconnect_delay(handlers: ChatStreamHandlers, attempt: int) -> float:
+    initial = max(0.0, handlers.reconnect_delay)
+    delay = initial * (2 ** max(0, attempt - 1))
+    maximum = handlers.max_reconnect_delay
+    if maximum > 0:
+        delay = min(delay, maximum)
+    return delay
 
 
 def _url_escape(value: str) -> str:
