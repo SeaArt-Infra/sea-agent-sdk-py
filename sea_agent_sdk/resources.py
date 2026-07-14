@@ -19,7 +19,7 @@ from .types import (
     ChatRunOptions,
     ChatReconnectInfo,
     ChatStreamHandlers,
-    HookListOptions,
+    HookRequest,
     SkillListOptions,
     ToolListOptions,
     option_value,
@@ -207,27 +207,16 @@ class HooksResource:
     def __init__(self, transport: Transport) -> None:
         self.transport = transport
 
-    def register(self, payload: Any) -> Any:
+    def register(self, payload: HookRequest | dict[str, Any]) -> Any:
         return self.transport.post_json("/v1/hooks/register", payload)
 
-    def list(self, options: HookListOptions | dict[str, Any] | None = None) -> Any:
-        return self.transport.get_json(
-            "/v1/hooks",
-            options_to_query(options, ["search", "limit", "offset"]),
-        )
+    def update(self, payload: HookRequest | dict[str, Any]) -> Any:
+        return self.transport.put_json("/v1/hooks", payload)
 
-    def get(self, hook_id: str) -> Any:
-        return self.transport.get_json(f"/v1/hooks/{_url_escape(hook_id)}")
-
-    def update(self, hook_id: str, payload: Any) -> Any:
-        return self.transport.put_json(f"/v1/hooks/{_url_escape(hook_id)}", payload)
-
-    def delete(self, hook_id: str) -> Any:
-        return self.transport.delete_json(f"/v1/hooks/{_url_escape(hook_id)}")
+    def delete(self) -> Any:
+        return self.transport.delete_json("/v1/hooks")
 
     Register = register
-    List = list
-    Get = get
     Update = update
     Delete = delete
 

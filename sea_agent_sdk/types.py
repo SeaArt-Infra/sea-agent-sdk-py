@@ -85,10 +85,10 @@ class AgentListOptions:
 
 
 @dataclass(slots=True)
-class HookListOptions:
-    search: str = ""
-    limit: int = 0
-    offset: int = 0
+class HookRequest:
+    name: str
+    endpoint: str
+    description: str
 
 
 @dataclass(slots=True)

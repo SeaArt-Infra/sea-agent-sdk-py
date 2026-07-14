@@ -23,7 +23,7 @@ Features:
 | Tools | `client.tools` / `client.Tools` | Register, list, update, delete, and resolve tools |
 | Skills | `client.skills` / `client.Skills` | Register, list, update, and delete skills |
 | Agents | `client.agents` / `client.Agents` | Register, list, update, delete, and inspect agents |
-| Hooks | `client.hooks` / `client.Hooks` | Register and manage worker event hook endpoints |
+| Hooks | `client.hooks` / `client.Hooks` | Manage the multimodal charge reservation hook |
 | Chat | `client.chat` / `client.Chat` | Run chat, stream chat, replay events, and cancel chats |
 
 ## Installation
@@ -491,20 +491,45 @@ Search, compare sources, and summarize findings.
 
 ## Hook Endpoints
 
-Register a hook endpoint for worker events:
+Register the single hook endpoint owned by the configured API key:
 
 ```python
-hook = client.hooks.register(
-    {
-        "name": "production-line-hook",
-        "endpoint": "https://example.com/agent-hook",
-        "description": "Receives Agent Worker events for the configured API key.",
-        "metadata": {},
-    }
+from sea_agent_sdk import HookRequest
+
+request = HookRequest(
+    name="production-line-hook",
+    endpoint="https://example.com/agent-hook",
+    description="Receives multimodal charge reservation events for the configured API key.",
 )
+hook = client.hooks.register(request)
+updated = client.hooks.update(request)
+deleted = client.hooks.delete()
 ```
 
-Hooks use `ClientOptions.api_key` as `Authorization: Bearer ...`; do not send `api_key` in the payload. Worker calls use `POST`, and the receiver should filter by `event_id` in the event payload when needed.
+Hook management requests use `ClientOptions.api_key` as `Authorization: Bearer ...`; registration and update request fields are `name`, `endpoint`, and `description`. One API key owns at most one active Hook. Registration creates a Hook and returns `409 Conflict` when one is already active; after deletion, the same API key can register again.
+
+### Callback event: `multimodal.charge.reserve`
+
+The Worker sends this event with fixed `POST` immediately before submitting a multimodal model operation. Callback `metadata` is copied from the individual chat request:
+
+```json
+{
+  "event_id": "evt_...",
+  "event": "multimodal.charge.reserve",
+  "run_id": "run_...",
+  "metadata": {},
+  "data": {
+    "operation_id": "op_...",
+    "tool_name": "generate",
+    "model": "model-name",
+    "modality": "multimodal",
+    "cost": "0.035",
+    "currency": "USD"
+  }
+}
+```
+
+For this event, the endpoint must synchronously return an HTTP success status and a top-level JSON object. Approval returns `{"approved":true}`. Rejection returns `{"approved":false}` and can include `code` and `message`, for example `{"approved":false,"code":"insufficient_balance","message":"Balance is insufficient"}`.
 
 ## API Reference
 
@@ -515,7 +540,7 @@ Hooks use `ClientOptions.api_key` as `Authorization: Bearer ...`; do not send `a
 | Tools | `register(payload)`, `list(options)`, `get(tool_id)`, `update(tool_id, payload)`, `delete(tool_id)`, `resolve(tool_id)` |
 | Skills | `register(payload)`, `list(options)`, `get(skill_id)`, `update(skill_id, payload)`, `delete(skill_id)` |
 | Agents | `register(payload)`, `list(options)`, `get(agent_id)`, `update(agent_id, payload)`, `delete(agent_id)`, `capabilities(agent_id)` |
-| Hooks | `register(payload)`, `list(options)`, `get(hook_id)`, `update(hook_id, payload)`, `delete(hook_id)` |
+| Hooks | `register(payload)`, `update(payload)`, `delete()` |
 | Chat | `create_completion(payload)`, `stream_completion(payload, handlers)`, `run(options)`, `run_stream(options, handlers)`, `get(chat_id)`, `events(chat_id, options)`, `stream(chat_id, handlers, options)`, `cancel(chat_id)` |
 
 ## Stream Utilities
