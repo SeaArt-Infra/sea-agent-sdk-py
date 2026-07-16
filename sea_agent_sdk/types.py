@@ -8,6 +8,7 @@ QueryParams = dict[str, Any]
 StreamTransport = Literal["sse", "ws"]
 STREAM_TRANSPORT_SSE: StreamTransport = "sse"
 STREAM_TRANSPORT_WS: StreamTransport = "ws"
+DEFAULT_TIMEOUT_SECONDS = 180.0
 
 
 @dataclass(slots=True)
@@ -22,7 +23,7 @@ class ClientOptions:
     endpoint: str = ""
     api_key: str = ""
     headers: dict[str, str] | None = None
-    timeout: float = 60.0
+    timeout: float = DEFAULT_TIMEOUT_SECONDS
 
 
 @dataclass(slots=True)

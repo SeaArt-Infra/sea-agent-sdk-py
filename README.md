@@ -67,12 +67,13 @@ client = sa.Client(
     sa.ClientOptions(
         endpoint="http://127.0.0.1:8080",
         api_key=os.environ.get("AGENT_GATEWAY_API_KEY", ""),
+        timeout=180.0,
         headers={"X-User-ID": "production-line-123"},
     )
 )
 ```
 
-`endpoint` may be the gateway base URL or a URL that already includes `/agent-v2`. The SDK appends `/agent-v2` before sending requests when it is missing.
+`endpoint` may be the gateway base URL or a URL that already includes `/agent-v2`. The SDK appends `/agent-v2` before sending requests when it is missing. Requests use a default timeout of 180 seconds; set `ClientOptions.timeout` or the `Client(timeout=...)` keyword to override it.
 
 Pass `X-User-ID` in `ClientOptions.headers` when `tools`, `skills`, or `agents` write operations need provider, owner, or operator metadata.
 

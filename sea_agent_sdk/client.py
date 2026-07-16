@@ -14,7 +14,7 @@ from .resources import (
     ToolsResource,
 )
 from .transport import Transport, normalize_agent_gateway_endpoint
-from .types import ClientOptions, Config
+from .types import DEFAULT_TIMEOUT_SECONDS, ClientOptions, Config
 
 
 class Client:
@@ -25,7 +25,7 @@ class Client:
         endpoint: str = "",
         api_key: str = "",
         headers: dict[str, str] | None = None,
-        timeout: float = 60.0,
+        timeout: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> None:
         resolved = _resolve_options(options, endpoint, api_key, headers, timeout)
         self.endpoint = normalize_agent_gateway_endpoint(resolved.endpoint)
@@ -92,7 +92,7 @@ def _resolve_options(
         endpoint=str(options.get("endpoint", endpoint) or ""),
         api_key=str(options.get("api_key", options.get("apiKey", api_key)) or ""),
         headers=options.get("headers", headers),
-        timeout=float(options.get("timeout", timeout) or 60.0),
+        timeout=float(options.get("timeout", timeout) or DEFAULT_TIMEOUT_SECONDS),
     )
 
 

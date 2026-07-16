@@ -34,8 +34,14 @@ class ConfigClientTests(unittest.TestCase):
     def test_client_initializes_resources_and_aliases(self) -> None:
         client = Client(ClientOptions(endpoint="http://127.0.0.1:8080", api_key="key"))
         self.assertEqual(client.endpoint, "http://127.0.0.1:8080/agent-v2")
+        self.assertEqual(client.transport.timeout, 180.0)
         self.assertIs(client.chat, client.Chat)
         self.assertIs(client.tools, client.Tools)
+
+    def test_client_timeout_can_be_overridden(self) -> None:
+        client = Client(endpoint="http://127.0.0.1:8080", timeout=30.0)
+
+        self.assertEqual(client.transport.timeout, 30.0)
 
     def test_new_client_from_config_maps_user_id_to_header(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

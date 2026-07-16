@@ -11,7 +11,7 @@ from typing import Any
 from urllib import error, parse, request
 
 from .errors import APIError, SeaAgentError, WebSocketDependencyError
-from .types import QueryParams, to_jsonable
+from .types import DEFAULT_TIMEOUT_SECONDS, QueryParams, to_jsonable
 
 
 @dataclass(slots=True)
@@ -19,13 +19,13 @@ class Transport:
     endpoint: str
     api_key: str = ""
     headers: dict[str, str] | None = None
-    timeout: float = 60.0
+    timeout: float = DEFAULT_TIMEOUT_SECONDS
 
     def __post_init__(self) -> None:
         self.endpoint = normalize_agent_gateway_endpoint(self.endpoint)
         self.headers = dict(self.headers or {})
         if self.timeout <= 0:
-            self.timeout = 60.0
+            self.timeout = DEFAULT_TIMEOUT_SECONDS
 
     def get_json(self, path: str, query: QueryParams | None = None) -> Any:
         return self._request_json("GET", path, query, None, None)
