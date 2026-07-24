@@ -1,0 +1,4 @@
+interface:
+  display_name: "SeaAgent Python SDK"
+  short_description: "Integrate Python services with Agent Gateway APIs."
+  default_prompt: "Use $sea-agent-sdk-py to integrate a Python service with Agent Gateway."
