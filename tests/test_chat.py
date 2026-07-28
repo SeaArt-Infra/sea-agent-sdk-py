@@ -81,6 +81,17 @@ class ChatTests(unittest.TestCase):
 
         self.assertEqual(body["skill_ids"], ["11111111-1111-1111-1111-111111111111"])
 
+    def test_chat_completion_body_includes_reasoning_effort(self) -> None:
+        body = ChatCompletionBody(
+            ChatCompletionRequest(
+                agent_id="agent_1",
+                reasoning_effort="high",
+                messages=[ChatMessage(role="user", content="hello")],
+            )
+        )
+
+        self.assertEqual(body["reasoning_effort"], "high")
+
     def test_build_run_payload_forwards_skill_ids(self) -> None:
         payload = build_run_payload(
             ChatRunOptions(
@@ -92,6 +103,15 @@ class ChatTests(unittest.TestCase):
         )
         body = ChatCompletionBody(payload)
         self.assertEqual(body["skill_ids"], ["11111111-1111-1111-1111-111111111111"])
+
+    def test_build_run_payload_forwards_reasoning_effort(self) -> None:
+        payload = build_run_payload(
+            ChatRunOptions(agent_id="agent_1", message="hello", reasoning_effort="medium"),
+            stream=True,
+        )
+        body = ChatCompletionBody(payload)
+
+        self.assertEqual(body["reasoning_effort"], "medium")
 
     def test_extra_body_overrides_body_fields(self) -> None:
         body = ChatCompletionBody(
