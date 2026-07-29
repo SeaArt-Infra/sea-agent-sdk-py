@@ -181,7 +181,6 @@ result = client.chat.run(
         request_id="req_123",
         agent_id="33333333-3333-4333-8333-333333333333",
         category="fabric",
-        reasoning_effort="high",
         message="Summarize this request context.",
         metadata={
             "session_id": "sess_123",
@@ -193,7 +192,7 @@ result = client.chat.run(
 )
 ```
 
-`request_id`, `category`, `reasoning_effort`, and `metadata` are sent in the chat body. `reasoning_effort` applies only to this run and overrides the Agent default when set. Custom headers are forwarded when the SDK creates non-streaming, SSE, or WebSocket chat requests. Use `extra_body` for gateway fields that are not yet exposed as first-class SDK options.
+`request_id`, `category`, and `metadata` are sent in the chat body. Custom headers are forwarded when the SDK creates non-streaming, SSE, or WebSocket chat requests. Use `extra_body` for gateway fields that are not yet exposed as first-class SDK options.
 
 ## SSE Streaming
 
@@ -469,14 +468,11 @@ agent = client.agents.register(
             "33333333-3333-4333-8333-333333333333",
         ],
         "pre_skills": ["11111111-1111-4111-8111-111111111111"],
-        "model_config": {"reasoning_effort": "medium"},
         "config": {"temperature": 0.2, "max_turns": 6},
         "enabled": True,
     }
 )
 ```
-
-Set `model_config.reasoning_effort` to establish the Agent default. A chat request can override it with the first-class `reasoning_effort` option without changing the saved Agent.
 
 ### Agent Skill preload
 
@@ -669,7 +665,7 @@ Preserve the default reconnect behavior unless product requirements demand a dif
 | Multimodal charge reservation hook | `hooks` |
 | Chat, streaming, replay, cancellation | `chat` |
 
-Pass list filters in each resource's options object. `reasoning_effort` is a first-class chat option; keep other custom gateway fields in `extra_body` only when the SDK has no first-class option. Put request-specific HTTP headers in `headers` on `ChatRunOptions`, not in the JSON body.
+Pass list filters in each resource's options object. Keep custom gateway fields in `extra_body` only when the SDK has no first-class option. Put request-specific HTTP headers in `headers` on `ChatRunOptions`, not in the JSON body.
 
 ## Verify And Protect Data
 

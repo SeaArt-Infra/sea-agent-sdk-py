@@ -159,7 +159,6 @@ class ChatCompletionRequest:
     request_id: str = ""
     agent_id: str = ""
     category: str = ""
-    reasoning_effort: str = ""
     agent_config: dict[str, Any] | None = None
     skill_ids: list[str] | None = None
     metadata: dict[str, Any] | None = None
@@ -173,7 +172,6 @@ class ChatRunOptions:
     request_id: str = ""
     agent_id: str = ""
     category: str = ""
-    reasoning_effort: str = ""
     agent_config: dict[str, Any] | None = None
     skill_ids: list[str] | None = None
     message: str = ""

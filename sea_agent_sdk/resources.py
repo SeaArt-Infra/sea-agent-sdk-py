@@ -421,7 +421,6 @@ def build_run_payload(options: ChatRunOptions | dict[str, Any], stream: bool) ->
         request_id=option_value(options, "request_id", ""),
         agent_id=option_value(options, "agent_id", ""),
         category=option_value(options, "category", ""),
-        reasoning_effort=option_value(options, "reasoning_effort", ""),
         agent_config=option_value(options, "agent_config"),
         skill_ids=option_value(options, "skill_ids"),
         messages=messages,
@@ -439,7 +438,7 @@ def chat_completion_body(payload: ChatCompletionRequest | dict[str, Any]) -> dic
         "stream": bool(option_value(payload, "stream", False)),
     }
 
-    for field in ("request_id", "agent_id", "category", "reasoning_effort"):
+    for field in ("request_id", "agent_id", "category"):
         value = option_value(payload, field, "")
         if value:
             body[field] = value
