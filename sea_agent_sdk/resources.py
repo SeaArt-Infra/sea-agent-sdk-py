@@ -20,6 +20,7 @@ from .types import (
     ChatReconnectInfo,
     ChatStreamHandlers,
     HookRequest,
+    MCPListOptions,
     SkillListOptions,
     ToolListOptions,
     option_value,
@@ -114,6 +115,54 @@ class ToolsResource:
     Update = update
     Delete = delete
     Resolve = resolve
+
+
+class McpsResource:
+    def __init__(self, transport: Transport) -> None:
+        self.transport = transport
+
+    def register(self, payload: Any) -> Any:
+        return self.transport.post_json("/v1/mcps/register", payload)
+
+    def list(self, options: MCPListOptions | dict[str, Any] | None = None) -> Any:
+        return self.transport.get_json(
+            "/v1/mcps",
+            options_to_query(
+                options,
+                [
+                    "search",
+                    "status",
+                    "public",
+                    "provider",
+                    "include_deleted",
+                    "limit",
+                    "offset",
+                ],
+            ),
+        )
+
+    def get(self, mcp_id: str) -> Any:
+        return self.transport.get_json(f"/v1/mcps/{_url_escape(mcp_id)}")
+
+    def update(self, mcp_id: str, payload: Any) -> Any:
+        return self.transport.put_json(f"/v1/mcps/{_url_escape(mcp_id)}", payload)
+
+    def delete(self, mcp_id: str) -> Any:
+        return self.transport.delete_json(f"/v1/mcps/{_url_escape(mcp_id)}")
+
+    def tools(self, mcp_id: str) -> Any:
+        return self.transport.get_json(f"/v1/mcps/{_url_escape(mcp_id)}/tools")
+
+    def call(self, mcp_id: str, payload: Any) -> Any:
+        return self.transport.post_json(f"/v1/mcps/{_url_escape(mcp_id)}/call", payload)
+
+    Register = register
+    List = list
+    Get = get
+    Update = update
+    Delete = delete
+    Tools = tools
+    Call = call
 
 
 class SkillsResource:

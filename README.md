@@ -21,6 +21,7 @@ Features:
 | System | `client.system` / `client.System` | Health and metrics checks |
 | Catalog | `client.catalog` / `client.Catalog` | List resolved catalog entries |
 | Tools | `client.tools` / `client.Tools` | Register, list, update, delete, and resolve tools |
+| MCPs | `client.mcps` / `client.Mcps` | Register MCP servers and proxy tools/list and tools/call |
 | Skills | `client.skills` / `client.Skills` | Register, list, update, and delete skills |
 | Agents | `client.agents` / `client.Agents` | Register, list, update, delete, and inspect agents |
 | Hooks | `client.hooks` / `client.Hooks` | Manage the multimodal charge reservation hook |
@@ -75,7 +76,7 @@ client = sa.Client(
 
 `endpoint` may be the gateway base URL or a URL that already includes `/agent-v2`. The SDK appends `/agent-v2` before sending requests when it is missing. Requests use a default timeout of 180 seconds; set `ClientOptions.timeout` or the `Client(timeout=...)` keyword to override it.
 
-Pass `X-User-ID` in `ClientOptions.headers` when `tools`, `skills`, or `agents` write operations need provider, owner, or operator metadata.
+Pass `X-User-ID` in `ClientOptions.headers` when `tools`, `mcps`, `skills`, or `agents` write operations need provider, owner, or operator metadata.
 
 ## System Checks
 
@@ -113,6 +114,27 @@ tools = client.tools.list(
 ```
 
 Pagination follows the gateway behavior: `limit` defaults to 20 when omitted or `<= 0`, the gateway caps values above 200, and `offset` starts at 0.
+
+## MCP Servers
+
+Use `client.mcps` to register a streamable HTTP or legacy SSE MCP server. Gateway stores configured upstream headers without returning their values; responses expose only `header_keys`. MCP mutations require `X-User-ID` and `X-Flag: 1` headers.
+
+```python
+server = client.mcps.register(
+    {
+        "name": "sea-search",
+        "server_url": "https://mcp.example.com/mcp",
+        "transport": "streamable-http",
+        "headers": {"Authorization": "Bearer token"},
+    }
+)
+tools = client.mcps.tools("mcp-server-id")
+result = client.mcps.call(
+    "mcp-server-id",
+    {"name": "search", "arguments": {"query": "hello"}},
+)
+print(server, tools, result)
+```
 
 ## Chat Requests
 
@@ -586,6 +608,7 @@ For this event, the endpoint must synchronously return an HTTP success status an
 | System | `health()`, `metrics()` |
 | Catalog | `list(options)` |
 | Tools | `register(payload)`, `list(options)`, `get(tool_id)`, `update(tool_id, payload)`, `delete(tool_id)`, `resolve(tool_id)` |
+| MCPs | `register(payload)`, `list(options)`, `get(mcp_id)`, `update(mcp_id, payload)`, `delete(mcp_id)`, `tools(mcp_id)`, `call(mcp_id, payload)` |
 | Skills | `register(payload)`, `list(options)`, `get(skill_id)`, `update(skill_id, payload)`, `delete(skill_id)` |
 | Agents | `register(payload)`, `list(options)`, `get(agent_id)`, `update(agent_id, payload)`, `delete(agent_id)`, `capabilities(agent_id)` |
 | Hooks | `register(payload)`, `update(payload)`, `delete()` |
@@ -629,7 +652,7 @@ make check
 >
 ---
 name: sea-agent-sdk-py
-description: Integrate Python services with SeaArt Agent Gateway through the official sea-agent-sdk package. Use for catalog lookup, Tool, Skill, Agent, Hook, chat completion, SSE or WebSocket streaming, chat replay, and cancellation in Python 3.10+.
+description: Integrate Python services with SeaArt Agent Gateway through the official sea-agent-sdk package. Use for catalog lookup, Tool, MCP Server, Skill, Agent, Hook, chat completion, SSE or WebSocket streaming, chat replay, and cancellation in Python 3.10+.
 ---
 
 # SeaAgent Python SDK
@@ -644,7 +667,7 @@ Use `sea-agent-sdk` for Agent Gateway work in Python. Prefer its `Client` and st
 4. Use the lowercase client resource that matches the operation.
 5. Run the project's focused test or `make test` after changing the integration.
 
-The SDK appends `/agent-v2` when the configured endpoint does not already contain it. Store the API key outside source control. Send `X-User-ID` for Tool, Skill, and Agent writes when the gateway requires owner or operator metadata.
+The SDK appends `/agent-v2` when the configured endpoint does not already contain it. Store the API key outside source control. Send `X-User-ID` for Tool, MCP Server, Skill, and Agent writes when the gateway requires owner or operator metadata.
 
 ## Create A Client
 
@@ -694,10 +717,15 @@ Preserve the default reconnect behavior unless product requirements demand a dif
 | Health or metrics | `system` |
 | Resolved catalog entries | `catalog` |
 | Tool registration and resolution | `tools` |
+| MCP Server registration and tool proxying | `mcps` |
 | Skill registration and listing | `skills` |
 | Agent registration and inspection | `agents` |
 | Multimodal charge reservation hook | `hooks` |
 | Chat, streaming, replay, cancellation | `chat` |
+
+## Manage MCP Servers
+
+Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, `tools`, and `call`. Registration and updates accept `streamable-http` or legacy `sse` transports; `call` accepts `{ "name": ..., "arguments": ..., "timeout_ms": ... }`. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`; access to a private server's `tools` and `call` operations requires its owner or `X-Admin-Access: 1`.
 
 Pass list filters in each resource's options object. Keep custom gateway fields in `extra_body` only when the SDK has no first-class option. Put request-specific HTTP headers in `headers` on `ChatRunOptions`, not in the JSON body.
 

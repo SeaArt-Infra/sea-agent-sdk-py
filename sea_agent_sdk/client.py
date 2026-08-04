@@ -9,6 +9,7 @@ from .resources import (
     CatalogResource,
     ChatResource,
     HooksResource,
+    McpsResource,
     SkillsResource,
     SystemResource,
     ToolsResource,
@@ -40,6 +41,7 @@ class Client:
         self.system = SystemResource(self.transport)
         self.catalog = CatalogResource(self.transport)
         self.tools = ToolsResource(self.transport)
+        self.mcps = McpsResource(self.transport)
         self.skills = SkillsResource(self.transport)
         self.agents = AgentsResource(self.transport)
         self.hooks = HooksResource(self.transport)
@@ -48,6 +50,7 @@ class Client:
         self.System = self.system
         self.Catalog = self.catalog
         self.Tools = self.tools
+        self.Mcps = self.mcps
         self.Skills = self.skills
         self.Agents = self.agents
         self.Hooks = self.hooks

@@ -61,6 +61,17 @@ class ToolListOptions:
 
 
 @dataclass(slots=True)
+class MCPListOptions:
+    search: str = ""
+    status: str = ""
+    public: bool | None = None
+    provider: str = ""
+    include_deleted: bool = False
+    limit: int = 0
+    offset: int = 0
+
+
+@dataclass(slots=True)
 class SkillListOptions:
     search: str = ""
     status: str = ""
