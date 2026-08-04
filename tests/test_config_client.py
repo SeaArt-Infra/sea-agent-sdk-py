@@ -37,6 +37,7 @@ class ConfigClientTests(unittest.TestCase):
         self.assertEqual(client.transport.timeout, 180.0)
         self.assertIs(client.chat, client.Chat)
         self.assertIs(client.tools, client.Tools)
+        self.assertIs(client.mcps, client.Mcps)
 
     def test_client_timeout_can_be_overridden(self) -> None:
         client = Client(endpoint="http://127.0.0.1:8080", timeout=30.0)
