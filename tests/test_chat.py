@@ -93,6 +93,61 @@ class ChatTests(unittest.TestCase):
         body = ChatCompletionBody(payload)
         self.assertEqual(body["skill_ids"], ["11111111-1111-1111-1111-111111111111"])
 
+    def test_reasoning_effort_is_sent_only_when_specified(self) -> None:
+        body = ChatCompletionBody(
+            ChatCompletionRequest(
+                agent_id="agent_1",
+                reasoning_effort="off",
+                messages=[ChatMessage(role="user", content="hello")],
+            )
+        )
+        self.assertEqual(body["reasoning_effort"], "off")
+
+        payload = build_run_payload(
+            ChatRunOptions(agent_id="agent_1", message="hello", reasoning_effort="medium"),
+            stream=True,
+        )
+        self.assertEqual(ChatCompletionBody(payload)["reasoning_effort"], "medium")
+
+        body = ChatCompletionBody(
+            ChatCompletionRequest(
+                agent_id="agent_1",
+                messages=[ChatMessage(role="user", content="hello")],
+            )
+        )
+        self.assertNotIn("reasoning_effort", body)
+
+        body = ChatCompletionBody(
+            ChatCompletionRequest(
+                agent_id="agent_1",
+                reasoning_effort="high",
+                extra_body={"reasoning_effort": "low"},
+                messages=[ChatMessage(role="user", content="hello")],
+            )
+        )
+        self.assertEqual(body["reasoning_effort"], "high")
+
+    def test_reasoning_effort_preserves_positional_option_arguments(self) -> None:
+        agent_config = {"agent": {"name": "assistant"}}
+        payload = build_run_payload(
+            ChatRunOptions("req_1", "agent_1", "fabric", agent_config),
+            stream=False,
+        )
+        self.assertEqual(payload.agent_config, agent_config)
+        self.assertIsNone(payload.reasoning_effort)
+
+        body = ChatCompletionBody(
+            ChatCompletionRequest(
+                [ChatMessage(role="user", content="hello")],
+                "req_1",
+                "agent_1",
+                "fabric",
+                agent_config,
+            )
+        )
+        self.assertEqual(body["agent_config"], agent_config)
+        self.assertNotIn("reasoning_effort", body)
+
     def test_extra_body_overrides_body_fields(self) -> None:
         body = ChatCompletionBody(
             ChatCompletionRequest(
