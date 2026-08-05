@@ -6,8 +6,28 @@ from typing import Any, Callable, Literal
 
 QueryParams = dict[str, Any]
 StreamTransport = Literal["sse", "ws"]
+ReasoningEffort = Literal[
+    "off",
+    "on",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+    "ultra",
+]
 STREAM_TRANSPORT_SSE: StreamTransport = "sse"
 STREAM_TRANSPORT_WS: StreamTransport = "ws"
+REASONING_EFFORT_OFF: ReasoningEffort = "off"
+REASONING_EFFORT_ON: ReasoningEffort = "on"
+REASONING_EFFORT_MINIMAL: ReasoningEffort = "minimal"
+REASONING_EFFORT_LOW: ReasoningEffort = "low"
+REASONING_EFFORT_MEDIUM: ReasoningEffort = "medium"
+REASONING_EFFORT_HIGH: ReasoningEffort = "high"
+REASONING_EFFORT_XHIGH: ReasoningEffort = "xhigh"
+REASONING_EFFORT_MAX: ReasoningEffort = "max"
+REASONING_EFFORT_ULTRA: ReasoningEffort = "ultra"
 DEFAULT_TIMEOUT_SECONDS = 180.0
 
 
@@ -176,6 +196,7 @@ class ChatCompletionRequest:
     stream: bool = False
     headers: dict[str, str] | None = None
     extra_body: dict[str, Any] | None = None
+    reasoning_effort: ReasoningEffort | None = None
 
 
 @dataclass(slots=True)
@@ -190,6 +211,7 @@ class ChatRunOptions:
     metadata: dict[str, Any] | None = None
     headers: dict[str, str] | None = None
     extra_body: dict[str, Any] | None = None
+    reasoning_effort: ReasoningEffort | None = None
 
 
 @dataclass(slots=True)
