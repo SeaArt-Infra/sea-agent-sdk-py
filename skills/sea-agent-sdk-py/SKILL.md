@@ -37,6 +37,8 @@ Use `sa.new_client_from_config()` only when the service intentionally shares `~/
 
 Use `message` for a single user turn and `messages` for a multi-turn or multimodal request. Do not set both `agent_config` and `skill_ids`; `skill_ids` add temporary Skills to an Agent run.
 
+When `agent_id` is set, the SDK sends the same value in `X-Agent-ID` and the JSON `agent_id` field; the gateway gives the header priority during the compatibility rollout.
+
 ```python
 result = client.chat.run(
     sa.ChatRunOptions(agent_id=agent_id, message="Summarize this request.")

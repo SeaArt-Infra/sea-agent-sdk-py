@@ -275,10 +275,11 @@ class ChatResource:
         self.transport = transport
 
     def create_completion(self, payload: ChatCompletionRequest | dict[str, Any]) -> Any:
+        body = chat_completion_body(payload)
         return self.transport.post_json(
             "/v1/chat/completions",
-            chat_completion_body(payload),
-            _payload_headers(payload),
+            body,
+            _chat_request_headers(_payload_headers(payload), body),
         )
 
     def stream_completion(
@@ -297,7 +298,7 @@ class ChatResource:
         return self._consume_stream(
             processor,
             initial_body=body,
-            headers=_payload_headers(payload),
+            headers=_chat_request_headers(_payload_headers(payload), body),
         )
 
     def run(self, options: ChatRunOptions | dict[str, Any]) -> Any:
@@ -518,6 +519,23 @@ def chat_completion_body(payload: ChatCompletionRequest | dict[str, Any]) -> dic
 
 def _payload_headers(payload: ChatCompletionRequest | dict[str, Any]) -> dict[str, str] | None:
     return option_value(payload, "headers")
+
+
+def _chat_request_headers(
+    headers: dict[str, str] | None,
+    body: dict[str, Any],
+) -> dict[str, str] | None:
+    agent_id = body.get("agent_id")
+    if not isinstance(agent_id, str) or not agent_id.strip():
+        return headers
+
+    result = {
+        key: value
+        for key, value in (headers or {}).items()
+        if key.lower() != "x-agent-id"
+    }
+    result["X-Agent-ID"] = agent_id
+    return result
 
 
 class _StreamTerminalSignal(Exception):
