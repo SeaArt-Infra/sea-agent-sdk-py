@@ -780,7 +780,7 @@ Preserve the default reconnect behavior unless product requirements demand a dif
 
 ## Manage MCP Servers
 
-Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, `tools`, and `call`. Registration and updates accept `streamable-http` or legacy `sse` transports; `call` accepts `{ "name": ..., "arguments": ..., "timeout_ms": ... }`. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`; access to a private server's `tools` and `call` operations requires its owner or `X-Admin-Access: 1`.
+Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, `tools`, and `call`. Registration and updates accept `streamable-http` or legacy `sse` transports; `call` accepts `{ "name": ..., "arguments": ..., "timeout_ms": ... }`. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`.
 
 Pass list filters in each resource's options object. `reasoning_effort` is a first-class chat option; keep other custom gateway fields in `extra_body` only when the SDK has no first-class option. Put request-specific HTTP headers in `headers` on `ChatRunOptions`, not in the JSON body.
 
