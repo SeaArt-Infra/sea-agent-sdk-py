@@ -169,6 +169,8 @@ is intended.
 
 ## Chat Requests
 
+When `agent_id` is set, the SDK sends the same value in both the `X-Agent-ID` request header and the JSON `agent_id` field. The gateway gives the header priority during the compatibility rollout.
+
 Use `message` for the common single-user-message case:
 
 ```python
