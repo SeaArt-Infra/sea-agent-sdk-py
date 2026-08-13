@@ -553,12 +553,15 @@ update payload, put the same object under `model_config`.
 
 ### Agent Skill preload
 
-`skills` remains the complete Agent Skill UUID array. For a short instruction
-needed on every run, also add that UUID to `pre_skills`. Gateway resolves each
+`skills` remains the complete Agent Skill UUID array. Add a UUID to
+`pre_skills` only when that Skill is expected in most runs and the model needs
+its full instruction before deciding what to do. Gateway resolves each
 preloaded Skill into the Agent system prompt and avoids the Worker `read_file`
-round trip for its `SKILL.md`; Skills omitted from `pre_skills` retain
-progressive Worker loading. `pre_skills` must be a duplicate-free subset of
-`skills`. Required and optional tools resolve for every bound Skill.
+round trip for its `SKILL.md`, at the cost of system-prompt tokens on every
+run. Keep conditional, occasional, long, or low-confidence Skills only in
+`skills` for progressive Worker loading; do not preload a Skill merely because
+it is short. `pre_skills` must be a duplicate-free subset of `skills`. Required
+and optional tools resolve for every bound Skill.
 
 ### Medium-term memory policy
 
@@ -744,6 +747,8 @@ Use `sa.new_client_from_config()` only when the service intentionally shares `~/
 
 Use `message` for a single user turn and `messages` for a multi-turn or multimodal request. Do not set both `agent_config` and `skill_ids`; `skill_ids` add temporary Skills to an Agent run.
 
+When `agent_id` is set, the SDK sends the same value in `X-Agent-ID` and the JSON `agent_id` field; the gateway gives the header priority during the compatibility rollout.
+
 ```python
 result = client.chat.run(
     sa.ChatRunOptions(agent_id=agent_id, message="Summarize this request.")
@@ -780,7 +785,7 @@ Preserve the default reconnect behavior unless product requirements demand a dif
 
 ## Manage MCP Servers
 
-Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, `tools`, and `call`. Registration and updates accept `streamable-http` or legacy `sse` transports; `call` accepts `{ "name": ..., "arguments": ..., "timeout_ms": ... }`. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`.
+Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, `tools`, and `call`. Registration and updates accept `streamable-http` or legacy `sse` transports; `call` accepts `{ "name": ..., "arguments": ..., "timeout_ms": ... }`. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`; access to a private server's `tools` and `call` operations requires its owner or `X-Admin-Access: 1`.
 
 Pass list filters in each resource's options object. `reasoning_effort` is a first-class chat option; keep other custom gateway fields in `extra_body` only when the SDK has no first-class option. Put request-specific HTTP headers in `headers` on `ChatRunOptions`, not in the JSON body.
 

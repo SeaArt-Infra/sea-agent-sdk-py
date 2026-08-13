@@ -92,7 +92,7 @@ update payloads use `model_config.reasoning_effort` instead.
 
 ## Manage MCP Servers
 
-Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, `tools`, and `call`. Registration and updates accept `streamable-http` or legacy `sse` transports; `call` accepts `{ "name": ..., "arguments": ..., "timeout_ms": ... }`. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`.
+Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, `tools`, and `call`. Registration and updates accept `streamable-http` or legacy `sse` transports; `call` accepts `{ "name": ..., "arguments": ..., "timeout_ms": ... }`. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`; access to a private server's `tools` and `call` operations requires its owner or `X-Admin-Access: 1`.
 
 ## Bind MCP Servers To Skills
 
@@ -121,10 +121,13 @@ Pass list filters in each resource's options object. Keep custom gateway fields 
 
 ## Agent Skill Preload
 
-Agent registration keeps `skills` as an array of Skill UUIDs. Also add a short
-instruction needed on every run to `pre_skills`: gateway injects it into the
+Agent registration keeps `skills` as an array of Skill UUIDs. Add a UUID to
+`pre_skills` only when that Skill is expected in most runs and the model needs
+its full instruction before deciding what to do. Gateway injects it into the
 resolved system prompt and avoids the initial Worker `read_file` call for its
-`SKILL.md`. Skills only in `skills` remain progressively loaded by Worker.
+`SKILL.md`, at the cost of system-prompt tokens on every run. Keep conditional,
+occasional, long, or low-confidence Skills only in `skills` for progressive
+Worker loading; do not preload a Skill merely because it is short.
 `pre_skills` must be a duplicate-free subset of `skills`; every bound Skill
 keeps its tool bindings.
 
