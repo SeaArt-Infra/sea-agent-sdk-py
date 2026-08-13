@@ -180,6 +180,27 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(body["model"], "custom")
         self.assertTrue(body["stream"])
 
+    def test_chat_request_sends_agent_id_in_header_and_body(self) -> None:
+        class _Transport:
+            def post_json(self, path, body, headers=None):
+                self.path = path
+                self.body = body
+                self.headers = headers
+                return {"ok": True}
+
+        transport = _Transport()
+        request_headers = {"x-agent-id": "stale-agent", "X-Trace-ID": "trace-1"}
+        _chat_resource(transport).run(
+            ChatRunOptions(agent_id="agent_1", message="hello", headers=request_headers)
+        )
+
+        self.assertEqual(transport.path, "/v1/chat/completions")
+        self.assertEqual(transport.body["agent_id"], "agent_1")
+        self.assertEqual(transport.headers["X-Agent-ID"], "agent_1")
+        self.assertNotIn("x-agent-id", transport.headers)
+        self.assertEqual(transport.headers["X-Trace-ID"], "trace-1")
+        self.assertEqual(request_headers["x-agent-id"], "stale-agent")
+
     def test_parse_sse(self) -> None:
         events = parse_sse(
             'event: response.text.delta\n'
