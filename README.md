@@ -792,7 +792,7 @@ Preserve the default reconnect behavior unless product requirements demand a dif
 
 ## Manage MCP Servers
 
-Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, and `connection_info`. Registration and updates accept `streamable-http` or legacy `sse` transports. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`; access to a private server requires its owner or `X-Admin-Access: 1`.
+Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, and `connection_info`. Registration and updates accept `streamable-http` or legacy `sse` transports. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`.
 
 To call MCP tools, use `connection_info(mcp_id)` and pass `info.url` and `info.headers` to an official MCP SDK client (`mcp` package, `streamablehttp_client`); the gateway endpoint is standard streamable-HTTP and the SDK does not implement the protocol itself. Upstream credentials stay server-side. `tools` and `call` still work but are deprecated private REST shells; they only support streamable-http upstreams.
 
