@@ -91,6 +91,22 @@ class MCPListOptions:
     offset: int = 0
 
 
+# The streamable-HTTP revision spoken by the gateway's standard MCP endpoint.
+MCP_PROTOCOL_VERSION = "2025-03-26"
+
+
+@dataclass(slots=True)
+class MCPConnectionInfo:
+    """Connection details for a registered MCP server, via the gateway proxy.
+
+    ``url`` is the gateway endpoint, not the upstream server URL, and ``headers``
+    carry gateway auth only — upstream registry credentials stay server-side.
+    """
+
+    url: str
+    headers: dict[str, str]
+
+
 @dataclass(slots=True)
 class SkillListOptions:
     search: str = ""

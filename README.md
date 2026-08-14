@@ -21,7 +21,7 @@ Features:
 | System | `client.system` / `client.System` | Health and metrics checks |
 | Catalog | `client.catalog` / `client.Catalog` | List resolved catalog entries |
 | Tools | `client.tools` / `client.Tools` | Register, list, update, delete, and resolve tools |
-| MCPs | `client.mcps` / `client.Mcps` | Register MCP servers and proxy tools/list and tools/call |
+| MCPs | `client.mcps` / `client.Mcps` | Register MCP servers; `connection_info` for standard MCP client access (`tools`/`call` deprecated) |
 | Skills | `client.skills` / `client.Skills` | Register, list, update, and delete skills |
 | Agents | `client.agents` / `client.Agents` | Register, list, update, delete, and inspect agents |
 | Hooks | `client.hooks` / `client.Hooks` | Manage the multimodal charge reservation hook |
@@ -119,6 +119,8 @@ Pagination follows the gateway behavior: `limit` defaults to 20 when omitted or 
 
 Use `client.mcps` to register a streamable HTTP or legacy SSE MCP server. Gateway stores configured upstream headers without returning their values; responses expose only `header_keys`. MCP mutations require `X-User-ID` and `X-Flag: 1` headers.
 
+`tools` and `call` are convenience wrappers over a private REST shape and are **deprecated**. To speak MCP to a registered server, call `connection_info` and hand the returned endpoint and headers to an official MCP SDK client — the gateway exposes a standard streamable-HTTP endpoint, so the SDK deliberately does not implement the protocol itself. Upstream registry credentials are injected by the gateway and never appear in these headers.
+
 ```python
 server = client.mcps.register(
     {
@@ -128,12 +130,17 @@ server = client.mcps.register(
         "headers": {"Authorization": "Bearer token"},
     }
 )
-tools = client.mcps.tools("mcp-server-id")
-result = client.mcps.call(
-    "mcp-server-id",
-    {"name": "search", "arguments": {"query": "hello"}},
-)
-print(server, tools, result)
+
+# Standard MCP client via the official SDK (streamable-http):
+from mcp import ClientSession
+from mcp.client.streamable_http import streamablehttp_client
+
+info = client.mcps.connection_info(server["id"])
+async with streamablehttp_client(info.url, headers=info.headers) as (read, write, _):
+    async with ClientSession(read, write) as session:
+        await session.initialize()
+        tools = await session.list_tools()
+        print(server, tools)
 ```
 
 ## Bind an MCP Server to a Skill
@@ -785,7 +792,9 @@ Preserve the default reconnect behavior unless product requirements demand a dif
 
 ## Manage MCP Servers
 
-Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, `tools`, and `call`. Registration and updates accept `streamable-http` or legacy `sse` transports; `call` accepts `{ "name": ..., "arguments": ..., "timeout_ms": ... }`. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`; access to a private server's `tools` and `call` operations requires its owner or `X-Admin-Access: 1`.
+Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `delete`, and `connection_info`. Registration and updates accept `streamable-http` or legacy `sse` transports. Include both `X-User-ID` and `X-Flag: 1` for MCP mutations. Gateway never returns stored upstream header values, only `header_keys`; access to a private server requires its owner or `X-Admin-Access: 1`.
+
+To call MCP tools, use `connection_info(mcp_id)` and pass `info.url` and `info.headers` to an official MCP SDK client (`mcp` package, `streamablehttp_client`); the gateway endpoint is standard streamable-HTTP and the SDK does not implement the protocol itself. Upstream credentials stay server-side. `tools` and `call` still work but are deprecated private REST shells; they only support streamable-http upstreams.
 
 Pass list filters in each resource's options object. `reasoning_effort` is a first-class chat option; keep other custom gateway fields in `extra_body` only when the SDK has no first-class option. Put request-specific HTTP headers in `headers` on `ChatRunOptions`, not in the JSON body.
 

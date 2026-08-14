@@ -20,6 +20,8 @@ from .types import (
     ChatReconnectInfo,
     ChatStreamHandlers,
     HookRequest,
+    MCP_PROTOCOL_VERSION,
+    MCPConnectionInfo,
     MCPListOptions,
     SkillListOptions,
     ToolListOptions,
@@ -156,6 +158,28 @@ class McpsResource:
     def call(self, mcp_id: str, payload: Any) -> Any:
         return self.transport.post_json(f"/v1/mcps/{_url_escape(mcp_id)}/call", payload)
 
+    def connection_info(self, mcp_id: str) -> MCPConnectionInfo:
+        """Endpoint and headers for talking MCP to a registered server.
+
+        Returns connection details rather than a client: the gateway endpoint is
+        standard streamable-HTTP, so pair this with an official MCP SDK client
+        instead of a hand-rolled JSON-RPC layer. Upstream registry credentials
+        are injected by the gateway and never appear in these headers.
+
+            info = client.mcps.connection_info(mcp_id)
+            async with streamablehttp_client(info.url, headers=info.headers) as (r, w, _):
+                async with ClientSession(r, w) as session:
+                    await session.initialize()
+        """
+        # Reuse the transport's own auth and custom-header rules so the proxy
+        # path cannot drift from the REST paths.
+        headers = self.transport.build_headers("application/json, text/event-stream", True)
+        headers["MCP-Protocol-Version"] = MCP_PROTOCOL_VERSION
+        return MCPConnectionInfo(
+            url=self.transport.build_url(f"/v1/mcps/{_url_escape(mcp_id)}/mcp"),
+            headers=headers,
+        )
+
     Register = register
     List = list
     Get = get
@@ -163,6 +187,7 @@ class McpsResource:
     Delete = delete
     Tools = tools
     Call = call
+    ConnectionInfo = connection_info
 
 
 class SkillsResource:
