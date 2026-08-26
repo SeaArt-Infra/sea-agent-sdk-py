@@ -424,7 +424,7 @@ Use `sa.STREAM_TRANSPORT_WS` with the same API to replay over WebSocket.
 
 ## Inline Agent Config
 
-Pass `agent_config` when the request should not reference a registered agent. Runtime fields such as `temperature`, `max_turns`, and `timeout` are forwarded by `agent-gateway` to the worker.
+Pass `agent_config` when the request should not reference a registered agent. Runtime fields such as `temperature`, `max_turns`, `max_output_tokens`, and `timeout` are forwarded by `agent-gateway` to the worker. `max_output_tokens` is an optional positive integer that limits each LLM call; omit it to use the model default.
 
 ```python
 result = client.chat.run(
