@@ -213,6 +213,8 @@ class ChatCompletionRequest:
     headers: dict[str, str] | None = None
     extra_body: dict[str, Any] | None = None
     reasoning_effort: ReasoningEffort | None = None
+    user_id: str = ""
+    session_id: str = ""
 
 
 @dataclass(slots=True)
@@ -228,6 +230,8 @@ class ChatRunOptions:
     headers: dict[str, str] | None = None
     extra_body: dict[str, Any] | None = None
     reasoning_effort: ReasoningEffort | None = None
+    user_id: str = ""
+    session_id: str = ""
 
 
 @dataclass(slots=True)
