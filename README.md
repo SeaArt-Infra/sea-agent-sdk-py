@@ -253,11 +253,11 @@ result = client.chat.run(
 )
 ```
 
-`request_id`, `category`, `user_id`, `session_id`, and `metadata` are sent in the chat body. The top-level identity fields take precedence over `metadata.user_id` and `metadata.session_id`; metadata remains a compatibility fallback. Custom headers are forwarded when the SDK creates non-streaming, SSE, or WebSocket chat requests.
+`request_id`, `category`, `user_id`, `session_id`, and `metadata` are sent in the chat body. The top-level identity fields take precedence over `metadata.user_id` and `metadata.session_id`; metadata remains a compatibility fallback. Custom headers are forwarded when the SDK creates non-streaming, SSE, or WebSocket chat requests. Use `extra_body` for gateway fields that are not yet exposed as first-class SDK options.
 
 ## Agent Categories
 
-Agent Gateway accepts `fabric`, `seaactor`, and `adk`. They map to the Fabric, SeaActor, and ADK scheduler pools respectively. When a chat references a registered Agent with `agent_id`, leave `category` empty to use that Agent's saved category. A non-empty request category overrides the saved value, so use it only for an inline Agent config or an intentional scheduler override.
+Agent Gateway accepts `fabric`, `seaactor`, `adk`, and `dsh`. They map to the Fabric, SeaActor, ADK, and DeepSeek Harness scheduler pools respectively. When a chat references a registered Agent with `agent_id`, leave `category` empty to use that Agent's saved category. A non-empty request category overrides the saved value, so use it only for an inline Agent config or an intentional scheduler override.
 
 Set `reasoning_effort` to override an Agent's saved reasoning setting for one chat only. Omit it to preserve the Agent and Fabric defaults. Agent Gateway accepts `off`, `on`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`; callers must select a level supported by the Agent's actual model route.
 
@@ -603,8 +603,9 @@ No top-level `session_id` (falling back to `metadata.session_id`) creates an
 ephemeral run, where both fields default to `false`. A persistent run also
 needs top-level `user_id` (falling back to `metadata.user_id`); missing scope
 identity, user memory opt-out, or Worker `MEMORY_MEDIUM_TERM_ENABLED=false`
-forces both fields off. Stored Agent policy can only restrict a field, never
-reopen a higher-level closure.
+forces both fields off. Stored Agent policy and the top-level chat-request
+`memory_policy` can only restrict a field, never reopen a higher-level closure.
+For a per-run restriction, pass that top-level field through `extra_body`.
 Long-term recall and writes remain disabled by default.
 
 ## Skill Runtime Rules
@@ -799,7 +800,7 @@ Use `client.mcps` or `client.Mcps` for `register`, `list`, `get`, `update`, `del
 
 To call MCP tools, use `connection_info(mcp_id)` and pass `info.url` and `info.headers` to an official MCP SDK client (`mcp` package, `streamablehttp_client`); the gateway endpoint is standard streamable-HTTP and the SDK does not implement the protocol itself. Upstream credentials stay server-side. `tools` and `call` still work but are deprecated private REST shells; they only support streamable-http upstreams.
 
-Pass list filters in each resource's options object. `reasoning_effort` is a first-class chat option. Put request-specific HTTP headers in `headers` on `ChatRunOptions`, not in the JSON body.
+Pass list filters in each resource's options object. `reasoning_effort` is a first-class chat option; keep other custom gateway fields in `extra_body` only when the SDK has no first-class option. Put request-specific HTTP headers in `headers` on `ChatRunOptions`, not in the JSON body.
 
 ## Verify And Protect Data
 
