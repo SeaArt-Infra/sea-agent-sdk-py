@@ -211,7 +211,6 @@ class ChatCompletionRequest:
     metadata: dict[str, Any] | None = None
     stream: bool = False
     headers: dict[str, str] | None = None
-    extra_body: dict[str, Any] | None = None
     reasoning_effort: ReasoningEffort | None = None
     user_id: str = ""
     session_id: str = ""
@@ -228,7 +227,6 @@ class ChatRunOptions:
     messages: list[ChatMessage | Mapping[str, Any]] | None = None
     metadata: dict[str, Any] | None = None
     headers: dict[str, str] | None = None
-    extra_body: dict[str, Any] | None = None
     reasoning_effort: ReasoningEffort | None = None
     user_id: str = ""
     session_id: str = ""
