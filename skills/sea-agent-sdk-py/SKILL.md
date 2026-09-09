@@ -72,8 +72,7 @@ for this run. Leave it as `None` when the caller did not choose a level so the
 Agent and Fabric defaults remain effective. The supported platform values are
 `off`, `on`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max`, and `ultra`;
 prefer the exported `REASONING_EFFORT_*` constants and only select values
-verified for the Agent's model route. Do not send provider-specific thinking
-fields through `extra_body`.
+verified for the Agent's model route.
 
 ## Agent Default Reasoning
 
@@ -139,7 +138,7 @@ an unauthenticated Streamable HTTP endpoint. The MCP Server `public` field
 controls cross-production-line sharing, so keep it false unless sharing is
 intended.
 
-Pass list filters in each resource's options object. Keep custom gateway fields in `extra_body` only when the SDK has no first-class option. Put request-specific HTTP headers in `headers` on `ChatRunOptions`, not in the JSON body.
+Pass list filters in each resource's options object. Put request-specific HTTP headers in `headers` on `ChatRunOptions`, not in the JSON body.
 
 ## Agent Skill Preload
 
@@ -174,9 +173,7 @@ semantic memory as background context; `learn` queues a qualifying completed
 run for asynchronous extraction rather than saving it synchronously. Both
 default to `false` for ephemeral runs (no top-level `session_id`, falling back
 to `metadata.session_id`) and are forced off by a missing memory scope, user opt-out, or Worker
-`MEMORY_MEDIUM_TERM_ENABLED=false`. Agent policy and request-level
-`memory_policy` only restrict; pass a request-level override through
-`extra_body`. Long-term recall and writes remain disabled by default.
+`MEMORY_MEDIUM_TERM_ENABLED=false`. Agent policy only restricts. Long-term recall and writes remain disabled by default.
 
 ## Verify And Protect Data
 
