@@ -4,6 +4,7 @@ import json
 import sys
 import types
 import unittest
+from dataclasses import fields
 from unittest.mock import patch
 
 from sea_agent_sdk import (
@@ -155,16 +156,6 @@ class ChatTests(unittest.TestCase):
         )
         self.assertNotIn("reasoning_effort", body)
 
-        body = ChatCompletionBody(
-            ChatCompletionRequest(
-                agent_id="agent_1",
-                reasoning_effort="high",
-                extra_body={"reasoning_effort": "low"},
-                messages=[ChatMessage(role="user", content="hello")],
-            )
-        )
-        self.assertEqual(body["reasoning_effort"], "high")
-
     def test_reasoning_effort_preserves_positional_option_arguments(self) -> None:
         agent_config = {"agent": {"name": "assistant"}}
         payload = build_run_payload(
@@ -186,16 +177,22 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(body["agent_config"], agent_config)
         self.assertNotIn("reasoning_effort", body)
 
-    def test_extra_body_overrides_body_fields(self) -> None:
-        body = ChatCompletionBody(
-            ChatCompletionRequest(
-                agent_id="agent_1",
-                messages=[ChatMessage(role="user", content="hello")],
-                extra_body={"model": "custom", "stream": True},
+    def test_chat_requests_do_not_expose_extra_body(self) -> None:
+        for request_type in (ChatCompletionRequest, ChatRunOptions):
+            self.assertNotIn(
+                "extra_body",
+                {field.name for field in fields(request_type)},
             )
+
+        payload = build_run_payload(
+            {
+                "agent_id": "agent_1",
+                "message": "hello",
+                "extra_body": {"unsupported_field": True},
+            },
+            stream=False,
         )
-        self.assertEqual(body["model"], "custom")
-        self.assertTrue(body["stream"])
+        self.assertNotIn("unsupported_field", ChatCompletionBody(payload))
 
     def test_chat_request_sends_agent_id_in_header_and_body(self) -> None:
         class _Transport:

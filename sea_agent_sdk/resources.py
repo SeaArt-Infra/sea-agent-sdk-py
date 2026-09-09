@@ -505,7 +505,6 @@ def build_run_payload(options: ChatRunOptions | dict[str, Any], stream: bool) ->
         session_id=option_value(options, "session_id", ""),
         stream=stream,
         headers=option_value(options, "headers"),
-        extra_body=option_value(options, "extra_body"),
     )
 
 
@@ -532,10 +531,6 @@ def chat_completion_body(payload: ChatCompletionRequest | dict[str, Any]) -> dic
     metadata = option_value(payload, "metadata")
     if metadata is not None:
         body["metadata"] = to_jsonable(metadata)
-
-    extra_body = option_value(payload, "extra_body")
-    if extra_body:
-        body.update(to_jsonable(extra_body))
 
     reasoning_effort = option_value(payload, "reasoning_effort")
     if reasoning_effort:
