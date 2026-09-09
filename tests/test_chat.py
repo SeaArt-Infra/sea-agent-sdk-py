@@ -81,17 +81,34 @@ class ChatTests(unittest.TestCase):
 
         self.assertEqual(body["skill_ids"], ["11111111-1111-1111-1111-111111111111"])
 
+    def test_chat_completion_body_includes_top_level_identity(self) -> None:
+        body = ChatCompletionBody(
+            ChatCompletionRequest(
+                agent_id="agent_1",
+                user_id="user_1",
+                session_id="session_1",
+                messages=[ChatMessage(role="user", content="hello")],
+            )
+        )
+
+        self.assertEqual(body["user_id"], "user_1")
+        self.assertEqual(body["session_id"], "session_1")
+
     def test_build_run_payload_forwards_skill_ids(self) -> None:
         payload = build_run_payload(
             ChatRunOptions(
                 agent_id="agent_1",
                 skill_ids=["11111111-1111-1111-1111-111111111111"],
+                user_id="user_1",
+                session_id="session_1",
                 message="hello",
             ),
             stream=True,
         )
         body = ChatCompletionBody(payload)
         self.assertEqual(body["skill_ids"], ["11111111-1111-1111-1111-111111111111"])
+        self.assertEqual(body["user_id"], "user_1")
+        self.assertEqual(body["session_id"], "session_1")
 
     def test_chat_request_sends_agent_id_in_header_and_body(self) -> None:
         class _Transport:
