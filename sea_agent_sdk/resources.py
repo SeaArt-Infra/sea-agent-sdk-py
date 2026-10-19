@@ -499,6 +499,7 @@ def build_run_payload(options: ChatRunOptions | dict[str, Any], stream: bool) ->
         reasoning_effort=option_value(options, "reasoning_effort"),
         agent_config=option_value(options, "agent_config"),
         skill_ids=option_value(options, "skill_ids"),
+        inline_skills=option_value(options, "inline_skills"),
         messages=messages,
         metadata=option_value(options, "metadata"),
         user_id=option_value(options, "user_id", ""),
@@ -527,6 +528,10 @@ def chat_completion_body(payload: ChatCompletionRequest | dict[str, Any]) -> dic
     skill_ids = option_value(payload, "skill_ids")
     if skill_ids:
         body["skill_ids"] = to_jsonable(skill_ids)
+
+    inline_skills = option_value(payload, "inline_skills")
+    if inline_skills:
+        body["inline_skills"] = to_jsonable(inline_skills)
 
     metadata = option_value(payload, "metadata")
     if metadata is not None:

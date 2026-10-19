@@ -201,6 +201,13 @@ class ChatMessage:
 
 
 @dataclass(slots=True)
+class ChatInlineSkill:
+    name: str
+    description: str
+    instruction: str
+
+
+@dataclass(slots=True)
 class ChatCompletionRequest:
     messages: list[ChatMessage | Mapping[str, Any]]
     request_id: str = ""
@@ -208,6 +215,7 @@ class ChatCompletionRequest:
     category: str = ""
     agent_config: dict[str, Any] | None = None
     skill_ids: list[str] | None = None
+    inline_skills: list[ChatInlineSkill | Mapping[str, Any]] | None = None
     metadata: dict[str, Any] | None = None
     stream: bool = False
     headers: dict[str, str] | None = None
@@ -223,6 +231,7 @@ class ChatRunOptions:
     category: str = ""
     agent_config: dict[str, Any] | None = None
     skill_ids: list[str] | None = None
+    inline_skills: list[ChatInlineSkill | Mapping[str, Any]] | None = None
     message: str = ""
     messages: list[ChatMessage | Mapping[str, Any]] | None = None
     metadata: dict[str, Any] | None = None
