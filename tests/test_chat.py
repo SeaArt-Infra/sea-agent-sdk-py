@@ -11,6 +11,7 @@ from sea_agent_sdk import (
     APIError,
     ChatCompletionBody,
     ChatCompletionRequest,
+    ChatInlineSkill,
     ChatMessage,
     ChatReconnectInfo,
     ChatRunOptions,
@@ -81,6 +82,23 @@ class ChatTests(unittest.TestCase):
         )
 
         self.assertEqual(body["skill_ids"], ["11111111-1111-1111-1111-111111111111"])
+
+    def test_chat_completion_body_includes_inline_skills(self) -> None:
+        body = ChatCompletionBody(
+            ChatCompletionRequest(
+                agent_id="agent_1",
+                inline_skills=[
+                    ChatInlineSkill(
+                        name="request-policy",
+                        description="Controls this request.",
+                        instruction="Always answer briefly.",
+                    )
+                ],
+                messages=[ChatMessage(role="user", content="hello")],
+            )
+        )
+        self.assertEqual(body["inline_skills"][0]["name"], "request-policy")
+        self.assertEqual(body["inline_skills"][0]["instruction"], "Always answer briefly.")
 
     def test_chat_completion_body_includes_top_level_identity(self) -> None:
         body = ChatCompletionBody(

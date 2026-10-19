@@ -573,6 +573,22 @@ run. Keep conditional, occasional, long, or low-confidence Skills only in
 it is short. `pre_skills` must be a duplicate-free subset of `skills`. Required
 and optional tools resolve for every bound Skill.
 
+Use `inline_skills` to add request-scoped Markdown instructions without
+registering a Skill. They require `agent_id`, cannot be combined with
+`agent_config`, and are discarded after the run.
+
+```python
+client.chat.run({
+    "agent_id": "33333333-3333-4333-8333-333333333333",
+    "inline_skills": [{
+        "name": "request-policy",
+        "description": "Controls this request.",
+        "instruction": "Always answer briefly.",
+    }],
+    "message": "Use the request policy for this run.",
+})
+```
+
 ### Medium-term memory policy
 
 For a registered Agent, put the optional setting at `config.memory_policy` in
